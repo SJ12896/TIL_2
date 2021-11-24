@@ -65,3 +65,75 @@ FROM employees e JOIN departments d
 ON (e.department_id = d.department_id AND e.manager_id = d.manager_id);
 ```
 
+
+
+### 91. Multiple Join Operations
+
+- 두 개 이상의 테이블을 조인할 때 USING, ON, NATURAL JOIN을 사용한다.
+
+```sql
+-- 먼저 e, d가 join한다. 그리고 l이 그 결과값과 조인한다. 마지막으로 c가 이전 결과값과 join한다. join 순서가 결과에 영향을 미친다.
+-- employee는 107행이지만 department와 join하면 106행이 나온다. 그리고 NATURAL JOIN으로 countries를 쓰면 2650개가 나온다.
+-- country_id를 SELECT에 추가할 경우 106행이 나온다. 왜냐면 SELECT에서 선택된 열들만 저장되어 사용한다.
+-- natural join은 때로 문제가 될 수 있는데 서버도 어떤 열이 조인될지 사전에 모르고 있기 때문이다. 사용을 권장하지 않는다.
+SELECT first_name, last_name, d.department_name, city, postal_code, street_address
+FROM employees e JOIN department d
+ON (e.department_id = d.department_id)
+JOIN locations l
+-- ON (l.location_id = d.location_id);
+USING(location_id)
+NATURAL JOIN countries;
+```
+
+
+
+### 92. Restricting Joins
+
+- WHERE 절 또는 AND 연산자 사용
+
+```sql
+SELECT e.first_name, e.last_name, d.department_id, d.department_name, l.city FROM employees e
+JOIN departments d
+ON (e.department_id = d.department_id)
+JOIN location l
+ON (d.location_id = l.location_id)
+WHERE d.department_id = 100;
+-- AND d.department_id = 100; 바로 위 WHERE절 대신 써도 같은 결과가 나온다.
+```
+
+
+
+### 93. Self Join
+
+- 스스로와 조인하는 것. 같은 테이블의 행을 비교하거나 계층적인 데이터에 쿼리문을 사용할 때 사용된다.
+
+```sql
+-- 예를 들어 회사는 계층이 있고 모든 직원은 id가 있고 사원급은 매니저를 가진다(자신의 매니저를 매니저 id로 기록). 매니저 급은 직원 id는 있지만 매니저 id는 없다.
+-- 직원과 직원의 매니저를 한 테이블에 볼 수 있다.
+SELECT worker.first_name, worker.last_name, worker.employee_id, worker.manager_id, manager.employee_id, manager.first_name, manager.last_name, worker.salary, manager.salary
+FROM employees worker JOIN employees manager
+ON (worker.manager_id = manager.employee_id);
+```
+
+
+
+### 94. Non-Equijoins (Joining Unequal Tables)
+
+- Joining Unequal Tables = Non-Equijoins
+- Equijoin은 같은 칼럼을 비교해서 조인
+- Non-Equi는 BETWEEN이나 =>, <, <>, <=, >=를 사용한다.
+- 중복 확인에도 사용 가능
+
+```sql
+SELECT e.employee_id, e.first_name, e.last_name, e.job_id, e.salary, j.min_salary, j.max_salary, j.job_id
+FROM employees e
+JOIN jobs j
+ON e.salary > j.max_salary
+AND j.job_id = 'SA_REP';
+
+SELECT e1.employee_id, e1.first_name, e1.last_name
+FROM employees e1 JOIN employees e2
+ON e1.employee_id <> e2.emloyee_id
+AND e1.first_name = e2.first_name;
+```
+
