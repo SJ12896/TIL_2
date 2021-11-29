@@ -1,12 +1,12 @@
 ## Section 12 - Joining Multiple Tables
 
-### 85. What is a Join? & Oracle SQL Join Types
+### 89. What is a Join? & Oracle SQL Join Types
 
 - 두 개 이상의 테이블을 한 쿼리에서 검색할 수 있게 해주는 것. 실제 테이블에 영향을 미치지 않는다.
 - Normalization(정규화) :  key를 사용하고 특정 데이터를 테이블에 저장해 데이터 중복을 줄이는 것
 - Oracle Join Types: Natural Join, Inner Join, Outer Join(LEFT OUTER, RIGHT OUTER, FULL OUTER), Equijoin, Non-Equijoin, Self Join, Cross Join(Cartesian product)
 
-### 86. Creating a Join
+### 90. Creating a Join
 
 - 양 테이블에 적어도 하나의 같은 칼럼이 있어야 한다. (same name, same data type) / 같은 값으로 연결한다.
 
@@ -17,7 +17,7 @@ SELECT columns FROM table1 JOIN_TYPE table2 ON table.column_name = table2.coulmn
 
 
 
-### 87. Natural Join
+### 91. Natural Join
 
 - Source table은 FROM에 쓰는 table, Target table은 JOIN 뒤에 사용하는 테이블 / WHERE 문으로 데이터 제한
 - DESC 테이블명으로 테이블 내의 column 정보 확인
@@ -26,7 +26,7 @@ SELECT columns FROM table1 JOIN_TYPE table2 ON table.column_name = table2.coulmn
 
 
 
-### 88. Join with the USING Clause
+### 92. Join with the USING Clause
 
 - 같은 이름의 칼럼이 여러개라면 USING을 사용해 특정할 수 있다. 이런 join을 Equijoin이라고 한다.
 
@@ -37,7 +37,7 @@ SELECT first_name, last_name, department_name, department_id FROM employees JOIN
 
 
 
-### 89. Handling Ambiguous Column Names
+### 93. Handling Ambiguous Column Names
 
 ```sql
 -- 다른 공통 칼럼 중 하나만 보이게 하고 싶을 때 table aliases를 정해주지 않으면 ambiguously defined 에러 발생 / 또는 alias를 지정한 후 테이블명을 다 적으면 에러가 발생한다.
@@ -49,7 +49,7 @@ SELECT first_name, last_name, department_name, e.manager_id FROM employees e JOI
 
 
 
-### 90. Inner Join & Join with the ON Clause
+### 94. Inner Join & Join with the ON Clause
 
 - 두 테이블에서 join 조건을 만족하거나 ON/USING 절 표현에 대해서 모든 행을 반환한다.
 - 매치되지 않은 결과는 보이지 않는다.
@@ -67,7 +67,7 @@ ON (e.department_id = d.department_id AND e.manager_id = d.manager_id);
 
 
 
-### 91. Multiple Join Operations
+### 95. Multiple Join Operations
 
 - 두 개 이상의 테이블을 조인할 때 USING, ON, NATURAL JOIN을 사용한다.
 
@@ -87,7 +87,7 @@ NATURAL JOIN countries;
 
 
 
-### 92. Restricting Joins
+### 96. Restricting Joins
 
 - WHERE 절 또는 AND 연산자 사용
 
@@ -103,7 +103,7 @@ WHERE d.department_id = 100;
 
 
 
-### 93. Self Join
+### 97. Self Join
 
 - 스스로와 조인하는 것. 같은 테이블의 행을 비교하거나 계층적인 데이터에 쿼리문을 사용할 때 사용된다.
 
@@ -117,7 +117,7 @@ ON (worker.manager_id = manager.employee_id);
 
 
 
-### 94. Non-Equijoins (Joining Unequal Tables)
+### 98. Non-Equijoins (Joining Unequal Tables)
 
 - Joining Unequal Tables = Non-Equijoins
 - Equijoin은 같은 칼럼을 비교해서 조인
@@ -135,5 +135,76 @@ SELECT e1.employee_id, e1.first_name, e1.last_name
 FROM employees e1 JOIN employees e2
 ON e1.employee_id <> e2.emloyee_id
 AND e1.first_name = e2.first_name;
+```
+
+### 99. Outer Joins
+```sql
+SELECT first_name, last_name, department_name
+FROM employees JOIN departments
+USING (department_id);
+- INNER JOIN은 이 경우 원래 employees 테이블의 행 수보다 하나 적게 나온다. department_id가 null인 행이 unmatch라서 사라진 것이다.
+
+```sql
+SELECT d.department_id, d.department_name, e.first_name, e.last_name
+FROM departments d JOIN employees e
+ON (d.manager_id = e.employee_id);
+```
+- Outer Joins: Left, Right, Full
+
+### 100. Left (Outer) Joins
+- 모든 데이터를 왼쪽 테이블을 기준으로 검색한다. 왼쪽 테이블에 있지만 오른쪽 테이블에 없어서 unmatched한 행도 가져온다. 매칭되지 않은 오른쪽 테이블의 컬럼 값은 NULL로 맨 마지막에 나온다.
+
+```sql
+-- inner join
+SELECT frist_name, last_name, department_id, department_name
+FROM employees JOIN departments
+USING(departemnt_id);
+
+-- left outer join (department_id가 없는 employees의 행도 나온다.)
+SELECT frist_name, last_name, department_id, department_name
+FROM employees LEFT OUTER JOIN departments
+USING(departemnt_id);
+
+-- 위와 같은 쿼리를 ON을 사용해서 쓰기. OUTER는 선택사항
+SELECT e.frist_name, e.last_name, d.department_id, d.department_name
+FROM employees e LEFT JOIN departments d
+ON (e.department_id = d.department_id)
+
+### 101. Right (Outer) Joins
+- left joins에서 right로 바뀌었다.
+
+```sql
+SELECT first_name, last_name, department_name
+FROM employees e RIGHT OUTER JOIN departments d
+ON(e.department_id = d.department_id);
+```
+
+### 102. Full (Outer) Join
+- left, right 테이블에서 모든 행을 검색한다. 
+
+```sql
+SELECT first_name, last_name, department_name
+FROM employees e FULL OUTER JOIN departments d
+ON(e.department_id = d.department_id);
+- matched한 행과 left, right의 모든 unmatched 행도 보여진다.
+- LEFT JOIN, RIGHT JOIN을 합치면 FULL JOIN이 된다.
+
+### 103. Cross Join (Cartesian Product / Cross Product)
+- Cross Join: 두 테이블 행 간 모든 조합을 반환하기 위해 사용한다. 테이블간 join을 특정하지 않거나 실수로 일어난다.
+
+```sql
+SELECT e.first_name, e.last_name, d.department_name, j.job_title
+FROM employees e CROSS JOIN department d
+CROSS JOIN jobs j;
+
+-- 직원 수를 세고싶을 때 아래처럼 COUNT(*) 사용하면 오른쪽 테이블에 오는 컬럼값이 비어있어도 하나로 세기 때문에 *가 아닌 employee_id처럼 특정해서 써야 한다.
+SELECT c.department_name, c.job_title, COUNT(*) AS employee_count
+FROM 
+    (SELECT d.department_name, j.job_title, j.job_id, d.department_id
+            FROM departments s CROSS JOIN jobs j) c -- ()를 써서 테이블 새로 만들기
+LEFT OUTER JOIN employees e
+    on (e.job_id = c.job_id AND e.department_id = c.department_id)
+GROUP BY c.department_name, c.job_title
+ORDER BY c.department_name, c.job_title;
 ```
 
