@@ -204,7 +204,93 @@ GROUP BY c.department_name, c.job_title
 ORDER BY c.department_name, c.job_title;
 ```
 
+### 104. Oracle's Old Style Join Syntax (ANSI vs Non-ANSI Joins) (Part 1)
 
+- ANSI Syntax를 사용하는 걸 추천
+
+- Oracle's Old Join Syntax에선 WHERE이 1) 테이블을 조인하는 역할 2) 행을 필터링하는 역할 두 가지의 역할을 가진다.
+
+```sql
+-- Inner Join
+-- ANSI
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e JOIN departments d
+ON (e.department_id = d.department_id);
+
+-- Non-ANSI
+SELECT e.first_name, e.last_name, d.department_name, l.city, l.street_address
+FROM employees e, departments d, locations l
+WHERE e.department_id = d.department_id
+AND d.location_id = l.location_id
+AND d.department_name = 'Finance';
+
+
+```
+
+```sql
+-- Outer Join
+-- ANSI
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e LEFT OUTER JOIN departments d
+ON (e.department_id = d.department_id);
+
+-- Non-ANSI
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e, departments d
+WHERE e.department_id = d.department_id(+);
+-- + 사인을 더 많은 행(unmatched rows)을 보여주고 싶은 쪽의 반대에 쓴다.
+```
+
+```sql
+-- Full Outer Join
+-- ANSI
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e FULL OUTER JOIN departments d
+ON (e.department_id = d.department_id);
+
+-- Non-ANSI
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e, departments d
+WHERE e.department_id(+) = d.department_id
+UNION
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e, departments d
+WHERE e.department_id = d.department_id(+);
+```
+
+### 105. Part2
+
+- 다수의 조인을 다룰 때 예전 문법은 오류 가능성이 높다.
+
+```sql
+-- ANSI (차례로 실행)
+SELECT first_name, last_name, department_name, 
+e.department_id, d.department_id, l.location_id
+FROM employees e RIGHT OUTER JOIN departments d
+ON (e.department_id = d.department_id)
+RIGHT OUTER JOIN locations
+USING(location_id);
+
+-- Non-ANSI (위와 같은 결과)
+SELECT first_name, last_name, department_name, 
+e.department_id, d.department_id, l.location_id
+FROM employees e, departments d, locations l
+WHERE d.location_id(+) = l.location_id
+```
+
+```sql
+-- ANSI (차례로 실행)
+SELECT first_name, last_name, department_name, job_title
+FROM employees e RIGHT JOIN departments d
+ON (e.department_id = d.department_id)
+RIGHT JOIN jobs j
+USING(job_id);
+
+-- Non-ANSI (위와 같은 결과)
+SELECT first_name, last_name, department_name, job_title
+FROM employees e, departments d, ㅓ
+WHERE d.location_id(+) = l.location_id
+```
 
 ### 108. Entity-Relationship Models in DBMS - How to Use Them with Joins?
 
