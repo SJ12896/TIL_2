@@ -42,11 +42,7 @@ SELECT * FROM movies;
 
 - 컬럼 헤딩은 첫번째 쿼리를 기준으로 나온다.
 
-
-
 - Join은 컬럼을 합치는 것이지만 SET은 행을 합친다. JOIN은 두 테이블이 양옆으로 붙지만 SET은 위아래로
-
-
 
 ### 120. UNION and UNION ALL Operators
 
@@ -61,5 +57,3 @@ SELECT * FROM employees
 ### 121. INTERSECT Operator
 
 ### 122. MINUS Operator
-
-

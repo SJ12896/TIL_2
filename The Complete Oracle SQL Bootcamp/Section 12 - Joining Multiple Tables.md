@@ -1,12 +1,12 @@
 ## Section 12 - Joining Multiple Tables
 
-### 89. What is a Join? & Oracle SQL Join Types
+### 89\. What is a Join? & Oracle SQL Join Types
 
 - 두 개 이상의 테이블을 한 쿼리에서 검색할 수 있게 해주는 것. 실제 테이블에 영향을 미치지 않는다.
-- Normalization(정규화) :  key를 사용하고 특정 데이터를 테이블에 저장해 데이터 중복을 줄이는 것
+- Normalization(정규화) : key를 사용하고 특정 데이터를 테이블에 저장해 데이터 중복을 줄이는 것
 - Oracle Join Types: Natural Join, Inner Join, Outer Join(LEFT OUTER, RIGHT OUTER, FULL OUTER), Equijoin, Non-Equijoin, Self Join, Cross Join(Cartesian product)
 
-### 90. Creating a Join
+### 90\. Creating a Join
 
 - 양 테이블에 적어도 하나의 같은 칼럼이 있어야 한다. (same name, same data type) / 같은 값으로 연결한다.
 
@@ -15,14 +15,14 @@
 SELECT columns FROM table1 JOIN_TYPE table2 ON table.column_name = table2.coulmn_name;
 ```
 
-### 91. Natural Join
+### 91\. Natural Join
 
 - Source table은 FROM에 쓰는 table, Target table은 JOIN 뒤에 사용하는 테이블 / WHERE 문으로 데이터 제한
 - DESC 테이블명으로 테이블 내의 column 정보 확인
 - NATUAL JOIN: ON 뒤의 join column을 따로 지정하지 않고 자동으로 매치한다. 공통 칼럼 / source table / target table순으로 보인다.
 - 만약 함께 있는 칼럼에서 null 값이 있다면 JOIN의 결과에서 보이는 테이블에는 해당 행이 없다.
 
-### 92. Join with the USING Clause
+### 92\. Join with the USING Clause
 
 - 같은 이름의 칼럼이 여러개라면 USING을 사용해 특정할 수 있다. 이런 join을 Equijoin이라고 한다.
 
@@ -32,7 +32,7 @@ SELECT first_name, last_name, department_name, department_id
 FROM employees JOIN departments USING (department_id);
 ```
 
-### 93. Handling Ambiguous Column Names
+### 93\. Handling Ambiguous Column Names
 
 ```sql
 -- 다른 공통 칼럼 중 하나만 보이게 하고 싶을 때 table aliases를 정해주지 않으면 ambiguously defined 에러 발생 / 또는 alias를 지정한 후 테이블명을 다 적으면 에러가 발생한다.
@@ -42,7 +42,7 @@ SELECT first_name, last_name, department_name, e.manager_id FROM employees e JOI
 - error 방지를 위해 alias name을 쓰는 걸 추천
 - NATURAL join에서 쓰이거나 USING 절에 쓰이는 join의 columns에는 alias를 줄 수 없다.
 
-### 94. Inner Join & Join with the ON Clause
+### 94\. Inner Join & Join with the ON Clause
 
 - 두 테이블에서 join 조건을 만족하거나 ON/USING 절 표현에 대해서 모든 행을 반환한다.
 - 매치되지 않은 결과는 보이지 않는다.
@@ -58,7 +58,7 @@ FROM employees e JOIN departments d
 ON (e.department_id = d.department_id AND e.manager_id = d.manager_id);
 ```
 
-### 95. Multiple Join Operations
+### 95\. Multiple Join Operations
 
 - 두 개 이상의 테이블을 조인할 때 USING, ON, NATURAL JOIN을 사용한다.
 
@@ -76,7 +76,7 @@ USING(location_id)
 NATURAL JOIN countries;
 ```
 
-### 96. Restricting Joins
+### 96\. Restricting Joins
 
 - WHERE 절 또는 AND 연산자 사용
 
@@ -90,7 +90,7 @@ WHERE d.department_id = 100;
 -- AND d.department_id = 100; 바로 위 WHERE절 대신 써도 같은 결과가 나온다.
 ```
 
-### 97. Self Join
+### 97\. Self Join
 
 - 스스로와 조인하는 것. 같은 테이블의 행을 비교하거나 계층적인 데이터에 쿼리문을 사용할 때 사용된다.
 
@@ -102,11 +102,11 @@ FROM employees worker JOIN employees manager
 ON (worker.manager_id = manager.employee_id);
 ```
 
-### 98. Non-Equijoins (Joining Unequal Tables)
+### 98\. Non-Equijoins (Joining Unequal Tables)
 
 - Joining Unequal Tables = Non-Equijoins
 - Equijoin은 같은 칼럼을 비교해서 조인
-- Non-Equi는 BETWEEN이나 =>, <, <>, <=, >=를 사용한다.
+- Non-Equi는 BETWEEN이나 =>, &lt;, <&gt;, &lt;=, &gt;=를 사용한다.
 - 중복 확인에도 사용 가능
 
 ```sql
@@ -122,7 +122,7 @@ ON e1.employee_id <> e2.emloyee_id
 AND e1.first_name = e2.first_name;
 ```
 
-### 99. Outer Joins
+### 99\. Outer Joins
 
 ```sql
 -- INNER JOIN
@@ -137,10 +137,11 @@ ON (d.manager_id = e.employee_id);
 ```
 
 - INNER JOIN은 이 경우 원래 employees 테이블의 행 수보다 하나 적게 나온다. department_id가 null인 행이 unmatch라서 사라진 것이다.
-
+    
 - Outer Joins: Left, Right, Full
+    
 
-### 100. Left (Outer) Joins
+### 100\. Left (Outer) Joins
 
 - 모든 데이터를 왼쪽 테이블을 기준으로 검색한다. 왼쪽 테이블에 있지만 오른쪽 테이블에 없어서 unmatched한 행도 가져온다. 매칭되지 않은 오른쪽 테이블의 컬럼 값은 NULL로 맨 마지막에 나온다.
 
@@ -161,7 +162,7 @@ FROM employees e LEFT JOIN departments d
 ON (e.department_id = d.department_id)
 ```
 
-### 101. Right (Outer) Joins
+### 101\. Right (Outer) Joins
 
 - left joins에서 right로 바뀌었다.
 
@@ -171,9 +172,9 @@ FROM employees e RIGHT OUTER JOIN departments d
 ON(e.department_id = d.department_id);
 ```
 
-### 102. Full (Outer) Join
+### 102\. Full (Outer) Join
 
-- left, right 테이블에서 모든 행을 검색한다. 
+- left, right 테이블에서 모든 행을 검색한다.
 
 ```sql
 SELECT first_name, last_name, department_name
@@ -184,7 +185,7 @@ ON(e.department_id = d.department_id);
 - matched한 행과 left, right의 모든 unmatched 행도 보여진다.
 - LEFT JOIN, RIGHT JOIN을 합치면 FULL JOIN이 된다.
 
-### 103. Cross Join (Cartesian Product / Cross Product)
+### 103\. Cross Join (Cartesian Product / Cross Product)
 
 - Cross Join: 두 테이블 행 간 모든 조합을 반환하기 위해 사용한다. 테이블간 join을 특정하지 않거나 실수로 일어난다.
 
@@ -204,11 +205,12 @@ GROUP BY c.department_name, c.job_title
 ORDER BY c.department_name, c.job_title;
 ```
 
-### 104. Oracle's Old Style Join Syntax (ANSI vs Non-ANSI Joins) (Part 1)
+### 104\. Oracle's Old Style Join Syntax (ANSI vs Non-ANSI Joins) (Part 1)
 
 - ANSI Syntax를 사용하는 걸 추천
-
+    
 - Oracle's Old Join Syntax에선 WHERE이 1) 테이블을 조인하는 역할 2) 행을 필터링하는 역할 두 가지의 역할을 가진다.
+    
 
 ```sql
 -- Inner Join
@@ -258,7 +260,7 @@ FROM employees e, departments d
 WHERE e.department_id = d.department_id(+);
 ```
 
-### 105. Part2
+### 105\. Part2
 
 - 다수의 조인을 다룰 때 예전 문법은 오류 가능성이 높다.
 
@@ -279,23 +281,40 @@ WHERE d.location_id(+) = l.location_id
 ```
 
 ```sql
--- ANSI (차례로 실행)
+-- ANSI (차례로 실행되어서 이전 결과를 바탕으로 다음 join이 일어난다.)
 SELECT first_name, last_name, department_name, job_title
 FROM employees e RIGHT JOIN departments d
 ON (e.department_id = d.department_id)
 RIGHT JOIN jobs j
 USING(job_id);
 
--- Non-ANSI (위와 같은 결과)
-SELECT first_name, last_name, department_name, job_title
-FROM employees e, departments d, ㅓ
+-- Non-ANSI (위보다 훨씬 많은 결과. 예전 문법을 쓰면 안되는 이유다. jobs 테이블과 departments테이블이 join조건이 없어 모든 행에서 조인하게 되었다. )
+SELECT first_name, last_name, department_name, job_title, j.job_id, e.job_id
+FROM employees e, departments d, jobs j
 WHERE d.location_id(+) = l.location_id
+AND e.job_id(+) = j.job_id;
+
+-- 원래 원했던 결과를 얻기 위한 NON-ANSI 사용법
+SELECT first_name, last_name, department_name, job_title, j.job_id, ed.job_id
+FROM (
+    SELECT first_name, last_name, job_id, department_name
+    FROM employees e, departments d
+    WHERE e.department_id(+) = d.department_id
+    ) ed, jobs j
+WHERE ed.job_id(+) = j.job_id;
 ```
 
-### 108. Entity-Relationship Models in DBMS - How to Use Them with Joins?
+### 106\. Part 3
+
+- INNER JOIN에서는 변화가 없지만 OUTER JOIN에서는 WHERE절에 쓴 조건이 결과 에서 보이지 않게 된다.
+- WHERE 절을 쓰면 join이 일어난 후 마지막에 조건절이 시행된다.
+    
+- 따라서 WHERE 뒤에 있던 AND로 연결된 조건을 ON뒤로 옮기면 다른 결과가 발생한다.
+
+### 108\. Entity-Relationship Models in DBMS - How to Use Them with Joins?
 
 - One to Many, Many to One
-
+    
 - One to One
-
+    
 - Many to Many : linking, jction, joining, bridging table 등의 이름을 갖는 중간 중개 테이블이 생긴다.
