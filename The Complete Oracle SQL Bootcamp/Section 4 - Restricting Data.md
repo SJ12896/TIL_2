@@ -32,3 +32,39 @@ WHERE job_id LIKE 'SA%';
 
 - WHERE column_name = NULL로는 수행할 수 없다. IS [NOT] NULL을 사용한다.
 
+
+
+### 48. Logical Operators (AND, OR, NOT)
+
+- WHERE을 여러 개 사용해 검색 조건을 좀 더 제한할 수 있게 한다.
+
+- AND: NULL & TRUE -> NULL / NULL & FALSE -> FALSE / NULL & NULL -> NULL
+- OR: NULL& TRUE -> TRUE / NULL & FALSE -> NULL / NULL & NULL -> NULL
+- NOT: NULL -> NULL
+
+
+
+### 49. Rules of Precedence
+
+- WHERE절 순서:
+  - Arithmetic Operators
+  - Concatenation Operator
+  - Comparison Conditions
+  - IS [NOT] NULL, LIKE, [NOT] IN
+  - [NOT] BETWEEN
+  - Not Equal To
+  - NOT Logical Operator
+  - AND Logical Operator
+  - OR Logical Operator
+- ()를 사용해 순서를 다르게 할 수 있다. 순서를 바꾸지 않더라도 가독성을 위해 ()를 사용하면 좋다.
+
+```sql
+-- job_id = 'ST_CLERK' and salary > 5000 인 경우 or job_id = 'IT_PROG'인 경우
+SELECT fisrt_name, last_name, job_id, salary FROM employees
+WHERE job_id = 'IT_PROG' or job_id = 'ST_CLERK' and salary > 5000;
+
+-- job_id = 'IT_PROG'인 경우 또는 job_id = 'ST_CLERK'인 경우를 만족하면서 salary > 5000인 경우
+SELECT fisrt_name, last_name, job_id, salary FROM employees
+WHERE (job_id = 'IT_PROG' or job_id = 'ST_CLERK') and salary > 5000;
+```
+
