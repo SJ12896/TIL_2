@@ -1016,3 +1016,80 @@ try {
 // Throwable getCause() : 원인 예외를 반환
 ```
 
+
+
+## Chapter 09 java.lang 패키지와 유용한 클래스
+
+- java.lang 패키지: 자바 프로그래밍에 가장 기본이 되는 클래스(String, System등)가 포함되어 import문 없이도 사용 가능. 
+
+- Object클래스의 메서드들
+
+  - protected Object clone(): 객체 자신의 복사본 반환
+
+    - clone()은 단순히 값을 복사하기 때문에 참조타입인 경우 완전한 복제가 이루어지지 않는다. 따라서 배열을 복제하면 복제 인스턴스도 같은 배열 주소를 가져 작업하면 원래 인스턴스에 영향을 미친다. 
+    - clone메서드를 오버라이딩해서 새로운 배열을 생성하고 배열 내용을 복사하도록 해야 한다. 오버라이딩하며 protected 접근 제어자를 public으로 변경해야 상속관계가 없는 다른 클래스에서 clone을 호출할 수 있다.
+    - clone()은 Cloneable을 구현하지 않은 클래스에서 호출되면 예외가 발생하는데 인스턴스 데이터를 보호하기 위해서다. 
+
+    ```java
+    class Point implements Cloneable {   // Cloneable 인터페이스 구현
+        public object clone() {   // 접근제어자 public으로 변경
+            Object obj = null;
+            try {
+                obj = super.clone();  // 조상 클래스 clone 호출. clone은 반드시 예외처리를 해줘야 함
+            } catch(CloneNotSupportedException e) {}
+            return obj;
+        }
+    }
+    
+    class CloneEx1 {
+        public static void main (String[] args) {
+            Point original = new Point(3, 5);
+            Point copy = (Point)original.clone(); // return 타입이 Object라서 형변환
+        }
+    }
+    ```
+
+    - 공변 반환타입(covariant return type): 조상 메서드 반환타입을 자손 클래스 타입으로 변경 허용. 위에서처럼 형변환을 해줄 필요 없다. 
+    - 일반적으로 배열 생성할 때 같은 길이 새로운 배열을 만든 후 System.arraycopy()를 이용해 내용을 복사한다.
+    - 배열 뿐 아니라 java.util 패키지의 Vector, ArrayList, LinkedList, HashSet, TreeSet, HashMap, TreeMap, Calendar, Date와 같은 클래스들이 이와 같은 방식으로 복제 가능하다. 
+    - 기본배열은 clone으로 복제 가능하지만 객체 배열인 경우 완전한 복제가 되지 않는다. 이를 얕은 복사(shallow copy)라고 한다. 반면 원본이 참조하는 객체까지 복제하는 것을 깊은 복사(deep copy)라고 한다. 
+
+  - equals(Object obj): 객체 자신과 obj가 같은 객체인지 알려줌
+
+    - 두 객체 같고 다름을 참조변수의 값(주소값)으로 판단.
+    - 주소값으로 비교하기 때문에 값이 같아도 false가 나올 수 있다.
+    - value값을 비교하기 위해선 equals 메서드를 오버라이딩해 주소가 아닌 내용을 비교하도록 변경하면 된다.
+    - String 클래스에서 이렇게 사용한다.(Date, File, wrapper-Integer, Double 에서도)
+
+  - protected void finalize(): 객체가 소멸될 때 가비지 컬렉터에 의해 자동 호출. 수행되어야하는 코드가 있을 때 오버라이딩(거의 사용X)
+
+  - getClass(): 객체 자신의 클래스 정보를 담은 Class 인스턴스 반환
+
+    - 자신이 속한 클래스의 Class 객체를 반환한다. Class 객체는 이름이 Class인 클래스의 객체다. Class 객체는 클래스의 모든 정보를 담고 있으며 클래스 당 1개만 존재한다. 클래스 로더에 의해 메모리에 올라갈 때 자동으로 생성된다. 클래스 로더는 실행 시 필요한 클래스를 동적으로 메모리에 로드하는 역할을 한다. 기존에 생성된 클래스 객체가 메모리에 존재하는지 확인하고 있으면 참조 반환, 없으면 클래스 패스에 지정된 경로를 따라 클래스 파일을 찾는다. 못찾으면 ClassNotFoundException이 발생한다. 
+    - Class 객체 얻는법: new Card().getClass()(생성된 객체로 부터 얻는 방법, 모든 정보를 얻을 수 있어 객체를 생성하고 메서드를 호출하는 동적인 코드 작성 가능), Card.class(리터럴로부터 얻는 방법), Class.forName("Card")(클래스 이름으로부터 얻는 방법, 특정 클래스 파일 예를 들어 데이터베이스 드라이버를 메모리에 올릴 때 주로 사용)
+
+    ```java
+    Card c = Card.class.newInstance(); // Class객체를 이용해 객체 생성, InstantiationException이 발생할 수 있어 예외처리 필요
+    ```
+
+    
+
+  - hashCode(): 객체 자신의 해시코드 반환
+
+    - 해싱 기법에 사용되는 해시함수 구현. 해싱은 데이터관리기법으로 다량의 데이터를 저장하고 검색하는 데 유용
+    - 해시함수는 찾고자하는 값 입력하면 저장된 위치를 알려주는 해시코드 반환
+    - 해시코드 메서드는 객체 주소값으로 해시코드를 만들어 반환하는데 32bit JVM에서는 결코 같은 해시코드를 가질 수 없었으나 64bit JVM에서는 중복가능성이 있다.
+    - 앞서 값으로 객체의 같고 다름을 판단하는 경우라면 equals뿐 아니라 hashCode 메서드도 적절히 오버라이딩 해야한다. 같은 객체라면 해시코드도 같아야 한다.
+    - String 클래스는 문자열 내용이 같으면 동일한 해시코드가 반환되도록 hashCode메서드가 오버라이딩 되어있다. 반면 System.identityHashCode(Object x)로 String 객체를 보면 원래 해시코드 메서드대로 객체 주소값으로 해시코드를 생성해 다른 해시코드 값을 반환한다.
+
+  - toString(): 객체 자신의 정보를 문자열로 반환
+
+    - 인스턴스에 대한 정보를 문자열로 제공한다. 오버라이딩 하지 않을 경우 클래스 이름 + @ + 16진수해시코드를 얻게 된다.
+    - String이나 Date 클래스 같은 경우 문자열을 반환하도록, 날짜와 시간을 반환하도록 오버라이딩 되어있다. toString은 일반적으로 인스턴스나 클래스에 대한 정보 또는 인스턴스 변수들의 값을 문자열로 변환해 반환하도록 오버라이딩되는 것이 보통이다.
+    - Object 클래스의 toString의 접근 제어자가 public이므로 오버라이딩 할 때도 같거나 넓은 범위에 속하는 public으로 오버라이딩 되어야 한다.
+
+  - notify(): 객체 자신을 사용하려고 기다리는 쓰레드를 하나 깨움
+
+  - notifyAll(): 객체 자신을 사용하려고 기다리는 모든 쓰레드를 깨움
+
+  - wait(): 다른 쓰레드가 notify(), notifyAll()을 호출할 때까지 현재 쓰레드를 무한히 또는 지정된 시간 동안 기다리게 함
