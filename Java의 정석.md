@@ -1093,3 +1093,126 @@ try {
   - notifyAll(): 객체 자신을 사용하려고 기다리는 모든 쓰레드를 깨움
 
   - wait(): 다른 쓰레드가 notify(), notifyAll()을 호출할 때까지 현재 쓰레드를 무한히 또는 지정된 시간 동안 기다리게 함
+
+
+
+#### 1.2 String 클래스
+
+- 기존 다른 언어는 문자열을 char의 배열로 다루었으나 자바에서는 클래스를 제공한다. String 클래스 역시 문자형 배열 참조변수 value를 인스턴스 변수로 정의해 매개변수로 입력받는 문자열이 이 인스턴스 변수에 저장되는 것이다. 
+- String 클래스는 앞에 final이 붙어 있으므로 다른 클래스 조상이 될 수 없다. 
+- 한 번 생성된 String 인스턴스가 갖고 있는 문자열은 읽어 올 수만 있고, 변경할 수는 없다. +로 결합할 경우 인스턴스 내의 문자열이 바뀌는 것이 아니라 새로운 String인스턴스가 생기는 것이다. 따라서 매 연산시마다 인스턴스가 새로 생성되므로 메모리공간을 차지해 가능한 한 결합횟수를 줄이는 게 좋다. 
+  - 따라서 문자열 결합, 추출 등을 많이 사용할 경우 **StringBuffer 클래스**를 이용하는 것이 좋다. StringBuffer 인스턴스에 저장된 문자열은 변경이 가능하다.
+- 문자열 비교: 문자열을 만들 때 리터럴을 지정하는 방법과 String클래스의 생성자를 사용해 만드는 방법이 있다. 생성자를 이용한 경우 new에 의해 메모리 할당이 이루어지고 항상 새로운 String 인스턴스가 생긴다. 하지만 문자열 리터럴은 이미 존재하는 것을 재사용한다. 따라서 equals로 비교했을 경우 값을 비교하기 때문에 두 경우 모두 true를 얻지만 인스턴스 주소를 ==로 비교했을 경우 후자는 false를 갖는다.
+- 문자열 리터럴: 자바 소스파일의 문자열 리터럴은 컴파일 시에 클래스 파일에 저장된다. 같은 내용 문자열 리터럴은 한 인스턴스를 공유하기 때문에 한번만 저장된다. 클래스 파일이 클래스 로더에 의해 메모리에 올라갈 때 리터럴 목록의 리터럴들이 JVM내의 **상수 저장소**에 저장된다.
+- 빈 문자열: 길이가 0인 배열은 모든 타입에서 가능하다. 길이가 0인 char형 배열을 내부적으로 가지고 있는 문자열이 빈 문자열이다. (char c = ""; 는 불가능. 반드시 하나를 지정해야 함)
+  - 변수 선언 시 보통 기본값으로 초기화하지만 String은 참조형의 기본인 null보다는 빈 문자열, char형은 공백으로 초기화 하는 것이 보통이다.
+- String 클래스의 메서드
+  - int compareTo(String str): 사전순서로 비교해 같으면 0, 이전이면 음수, 이후면 양수
+  - String concat(String str): 문자열을 뒷에 덧붙인다.
+  - boolean contains(charSequence s): s가 포함되었는지 검사
+  - boolean endsWith(String suffix), startsWith(String prefix): suffix로 끝나는지 검사, prefix로 시작하는지 검사
+  - boolean equalsIgnoreCase(String str): 대소문자 구분없이 비교
+  - int indexOf(int ch **or** String str): 문자나 문자열이 문자열에 존재하는지 확인해 위치 반환. 없으면 -1
+  - int indexOf(int ch, int pos): ch가 존재하는지 pos부터 확인해서 알려줌
+  - char charAt(int index): 지정위치의 문자 알려줌
+  - String intern(): 문자열을 **상수풀**에 등록한다. 같은 내용이 있으면 그 문자열 주소값 반환
+  - int lastIndexOf(int ch **or** String str): 문자나 문자열을 오른쪽 끝에서부터 찾아서 위치 반환
+  - String replace(char old, char nw): (문자)old를 nw로 바꿔서 반환
+  - String replace(charSequence old, CharSequence nw): (문자열)old를 nw로 모두 바꾼 문자열 반환
+  - String replaceAll(Strign regex, String replacement): 지정된 문자열 regex과 일치하는 것을 새로운 문자열 replacement로 모두 변경 (정규표현식 사용가능)
+  - Strign replaceFirst(String regex, String replacement): 문자열 중에서 지정된 문자열(regex)과 일치하는 것 중 첫번째만 새로운 문자로 변경 (정규표현식 사용가능)
+  - String[] split(String regex, int limit): 문자열을 지정된 분리자로 나누어 문자열배열에 담아 반환. 단, 문자열 전체를 지정된 수로 자른다.
+  - String substring(int begin, int end): begin부터 end까지 범위의 문자열 얻는다. 시작위치는 문자 범위에 포함되고 끝 위치는 포함되지 않으며 끝 위치는 지정하지 않아도 된다.
+  - String toString(): 인스턴스에 저장된 문자열 반환
+  - String trim(): 양 끝 공백 없앤 결과 반환. 중간은 x
+  - static String valueOf(): boolean, char, int, long, float, double, Object가 들어갈 수 있으며 지정된 값을 문자열로 변환해 반환한다. 참조변수는 toString() 호출 결과 반환. 빈 문자열을 더해서 숫자에서 문자열로 변경하기 쉽지만 성능면에서는 valueOf를 사용하는 것이 좋다.
+  - join: 구분자를 넣어서 결합
+  - java.util.StringJoiner 클래스: (구분자, 맨 앞에 올 글자, 맨 뒤에 올 글자)를 사용해 결합
+- 유니코드는 2 byte, 16비트 문자체계인데 모자라 20비트로 확장. 그래서 하나의 문자를 char로 다루지 못하고 int로 다룰 수밖에 없다. 새로 추가된 문자들을 보충 문자라고 한다. 위의 메서드 중 매개변수가 int ch인 것은 보충문자를 지원하고 char ch는 지원하지 않는 것이다.
+- 문자 인코딩 변환: getBytes(String charestName)을 사용하면 문자열 문자 인코딩을 다른 인코딩으로 변경할 수 있다. 자바는 UTF-16을 사용하지만 문자열 리터럴에 포함되는 문자들은 OS의 인코딩을 사용한다. 한글 윈도우즈는 CP949를 사용한다. 변경하려면
+
+```java
+byte[] uft8_str = "가".getBytes("UTF-8");
+String str = new String(utf8_str, "UTF-8");   // byte 배열을 문자열로 변환
+```
+
+- String.format(): 형식화된 문자열 만들어내기. printf와 사용법이 같다. 
+- String을 기본형 값으로 변환: valueOf()를 쓰거나 parseInt()를 사용한다. valueOf 반환타입은 int가 아닌 Integer인데 오토 박싱에 의해 int로 자동 변환된다. 예전에는 parseInt를 많이 사용했으나 메서드 이름을 통일하기 위해 valueOf가 추가되었다. 메서드 내부에서는 parseInt를 호출하므로 사실 같은 메서드다. 그 외 Boolean.parseBoolean, Dobule.parseShort, parseDouble등이 있다. 기본형 타입 이름 첫 글자가 대문자인 것은 래퍼 클래스(wrapper class)다. 기본형 값을 감싼 클래스라는 뜻에서 붙여진 이름으로 기본형을 클래스로 표현한 것이다.
+  - parseInt()나 parseFloa()등은 문자열에 공백, 문자가 포함되어있으면 NumberFormat Exception이 발생할 수 있으므로 trim()을 습관적으로 사용해야한다. 하지만 +(parseInt로 가능. JDK1.7부터), 소수점, f등은 자료형에 알맞은 변환을 하는 경우에 허용 가능하다. 1.0f는 parseInt에서는 예외가 발생하지만 parseFloat은 가능하다. 하지만 integer.parseInt("a", 16)은 16진수에서 a의 값인 10이다.
+
+```java
+int i = Integer.parseInt("100");
+int i2 = Integer.valueOf("100");
+```
+
+
+
+#### 1.3 StringBuffer클래스와 StringBuilder클래스
+
+- String 인스턴스는 지정된 문자열 변경 불가능하지만 StringBuffer는 가능하다. 내부적으로 문자열 편집을 위한 버퍼를 가지고 있고 인스턴스 생성할 때 그 크기를 지정할 수 있다.(지정하지 않으면 버퍼 크기는 16) 따라서 편집할 문자열 길이를 고려해 버퍼 길이를 충분히 잡아준다. 버퍼 길이를 넘어서면 새로운 길이 배열을 생성후 이전 배열 값을 복사하기 때문에 효율이 떨어진다.
+- String과 마찬가지로 char형 배열의 참조변수를 인스턴스 변수로 선언해 놓고 있다.
+- StringBuffer의 메서드 append는 반환타입이 StringBuffer로 문자열을 추가하고 자신의 주소를 반환한다. 자신을 반환하기 때문에 연속적으로 append를 호출할 수 있다. void라면 불가능했을 것이다.
+- String은 equals를 오버라이딩 해서 값을 비교하지만 StringBuffer는 오버라이딩하지 않아 등가비교연산자로 비교한 것과 같은 결과를 얻는다.
+- toString()은 오버라이딩 되어있어 호출하면 담은 문자열을 String으로 반환한다.
+- 메서드: String과 유사한 메서드가 많으며 추가, 변경, 삭제와 관련된 메서드 추가 제공
+  - StringBuffer(int length): StringBuffer 인스턴스 생성. length 미입력시 16문자 담을 수 있는 버퍼
+  - StringBuffer(String str): 문자열 값 갖는 인스턴스 생성
+  - StringBuffer append(): boolean, char, char[], couble, float, int, long, Object, String으로 입력된 값을 문자열로 변환해 뒤에 덧붙인다.
+  - int capacity(): 버퍼 크기를 알려준다. length()는 버퍼에 담긴 문자열 길이를 알려준다.
+  - char charAt(int index): 지정된 위치에 있는 문자 반환
+  - StringBuffer delete(int start, int end): 시작부터 끝 사이의 문자 제거(끝 위치 문자 제외)
+  - StringBuffer deleteCharAt(int index): 지정된 위치 문자 제거
+  - StringBuffer insert(int pos, ): boolean, char, char[], couble, float, int, long, Object, String을 두 번째 매개변수로 받아 문자열로 변환후 지정 위치에 추가
+  - StringBuffer replace(int start, int end, String str): 지정 범위 문자를 주어진 문자열로 변경(end의 문자 포함x)
+  - StringBuffer reverse(): 순서 거꾸로 나열
+  - void setCharAt(int index, char ch): 지정 위치 문자를 주어진 문자로 변경
+  - void setLength(int newLength): 지정된 길이로 문자열 길이 변경. 늘리면 빈공간을 널문자로 채움
+  - String substring(int start, int end): 지정 범위 문자열 String으로 반환(end 지정하지 않으면 끝까지)
+- StringBuilder: 멀티쓰레드에 안전하도록 동기화 되어있다. 동기화가 StringBuffer 성능을 떨어뜨려 멀티쓰레드로 작성된 프로그램이 아니면 StringBuffer동기화가 성능을 떨어뜨린다. 따라서 StringBuffer에서 쓰레드의 동기화만 뺀 StringBuilder가 새로 추가되었다. 완전히 똑같은 기능으로 StringBuffer만 StringBuilder로 바꾸면 된다. StringBuffer도 성능이 좋아 꼭 향상이 필요한 경우만 바꾼다.
+
+
+
+#### 1.4 Math클래스
+
+- 생성자의 접근 제어자가 private으로 다른 클래스에서 인스턴스를 생성할 수 없다. 클래스 내에 인스턴스 변수가 없어 생성할 필요가 없고 메서드는 모두 static이며 자연로그의 밑과 원주율만 상수로 지정해두었다.
+- 올림, 버림, 반올림
+  - round(): 소수점 첫째자리에서 반올림 해서 정수값(long)반환
+  - 소수점 n번째 자리에서 반올림한 값 얻기: 10의 n제곱으로 곱하기(소수 둘째자리까지 얻고 싶다면 100, 셋째자리면 1000 이런 식으로) -> Math.round()사용 -> 10의 n제곱.0으로 나누기(.0안붙이면 정수결과)
+  - celi(): 올림
+  - floor(): 버림
+  - rint(): round()처럼 소수점 첫 째자리에서 반올림하는데 반환값은 dobule, 두 정수 정가운데 있는 값은 가장 가까운 짝수를 반환한다.(-1.5인경우 -2반환)
+- 예외를 발생시키는 메서드: 이름에 Exact가 포함되어있는 메서드가 JDK1.8부터 추가됨. 정수형 연산에서 발생가능한 오버플로우 감지
+  - addExact, stbtractExact, multiplyExact, incrementExact(int a) -> a++, decrementExact, negateExact(int a)->-a, toIntExact(long value)-> int로 형변환
+  - 오버플로우가 발생하면 ArithmeticException을 발생시킨다.
+  - negateExact(int a): 부호를 반대로 바꾸는 식은 ~a+1로 ~a의 결과가 int의 최대값이면 오버플로우가 발생할 수 있다. 오버플로우가 발생했는데 형변환을 하지 않았다면 오버플로우로 인해 다시 원래 값으로 되어버린다.
+- pow(int a, int b): a의 b제곱 구하기
+- sqrt(int a): a의 제곱근 구하기
+- StrictMath클래스: Math클래스는 최대한의 성능을 얻기 위해 JVM이 설치된 OS의 메서드를 호출해 사용한다. 따라서 이런 차이를 없애기 위해 성능을 약간 포기하고 어디서 실행되어도 같은 결과를 얻는 StrictMath클래스가 새로 작성되었다.
+- 메서드
+  - abs(): double, float, int, long의 절대값 반환
+  - max(a, b): double, float, int, long의 두 값을 비교해 큰 쪽 반환 / min
+  - static double random(): 0.0 ~ 1.0범위의 임의의 dobule 반환(1.0은 포함x)
+
+
+
+#### 1.5 래퍼(wrapper) 클래스
+
+- 객체지향 개념에서는 모든 것을 객체로 다루어야 하는데 자바는 8개의 기본형을 객체로 다루지 않는다. 그래서 완전한 객체지향 언어가 아니라는 이야기를 듣지만 보다 높은 성능을 얻을 수 있다.
+- 하지만 기본형을 어쩔 수 없이 객체로 다뤄야할 때가 있다. **매개변수로 객체 요구, 객체로 저장해야할 때, 객체간 비교 필요할 때** 등이다. 이 때 기본형 값을 객체로 변환하기 위해 사용되는 것이 래퍼 클래스다. 기본형이 8개이므로 래퍼클래스도 8개가 있다.
+- char는 Character, int는 Integer이고 나머지는 앞글자만 대문자로 바꾸면 된다.
+- 래퍼 클래스 생성자는 매개변수로 각 자료형 값을 인자로 받는다.
+- 래퍼 클래스들은 모두 equals()가 오버라이딩 되어있어 값으로 비교할 수 있다. 또 compareTo()를 제공한다.
+- toString()이 오버라이딩 되어있고 MAX_VALUE, MIN_VALUE, SIZE, BYTES, TYPE등의 static상수를 공통적으로 가지고 있다.
+- Number클래스: 추상클래스. 숫자를 멤버변수로 가지는 래퍼클래스들의 조상. 그 외에 자손으로 BigInteger, BigDecimal도 가진다. 첫번째는 long으로도 다룰 수 없는 큰 범위 정수, 두번째는 dobule로도 다룰 수 없는 큰 부동 소수점수를 처리하기 위한 것으로 다양한 메서드를 제공한다.
+- 문자열 숫자 변환: 원래 두번째는 기본형 반환, 세번째는 래퍼 클래스 반환이었으나 JDK 1.5부터 오토박싱 기능으로 차이가 없어졌다. 또한 다른 진법일 경우 뒤에 써주면 변환 가능하다.
+
+```java
+int i = new Integer("100").intValue();
+int i2 = Integer.parseInt("100");
+int i3 = Integer.valueOf("100");
+```
+
+- 오토박싱 & 언박싱: JDK1.5 이전에는 기본형과 참조형 연산이 불가능했으나 이제 컴파일러가 자동으로 intValue()를 추가해 변환하는 코드를 넣어줘 가능해졌다. 또한 내부적으로 객체 배열을 가지는 Vector클래스나 ArrayList클래스에 기본형을 저장할 때도 컴파일러가 자동으로 변환해준다.
+  - 오토 박싱: 기본형을 래퍼 클래스 객체로 자동 변환
+  - 오토 언박싱: 래퍼클래스에서 기본형으로 자동 변환
+
