@@ -1216,3 +1216,121 @@ int i3 = Integer.valueOf("100");
   - 오토 박싱: 기본형을 래퍼 클래스 객체로 자동 변환
   - 오토 언박싱: 래퍼클래스에서 기본형으로 자동 변환
 
+
+
+### 2. 유용한 클래스
+
+#### 2.1 java.util.Objects클래스
+
+- Object 클래스의 보조 클래스. Math 클래스처럼 모든 메서드가 static이다. **객체의 비교, null체크**에 유용하다.
+- isNull(): 해당 객체가 null인지 확인
+- nonNull(): 해당 객체가 null이 아닌지 확인
+- requireNonNull(T obj, String message): 해당 객체가 null이 아니어야하는 경우 사용. null이라면 NullPointerException 발생. 두 번쨰 매개변수는 예외의 메세지가 되며 꼭 쓰지 않아도 된다.
+
+```java
+// 람다식 관련. T는 Object 타입 의미
+static <T> T requireNonNull(T obj, Supplier<String> messageSupplier)
+```
+
+- compare(): Object클래스는 등가비교를 위한 equals()만 있었다. compare()는 두 대상이 같으면 0, 크면 양수, 작으면 음수를 반환한다. c는 두 객체를 비교하는데 사용할 비교 기준이다.
+
+```java
+static int compare(Object a, Object b, Comparator c)
+```
+
+- equals(): Object클래스에 존재하지만 Objects클래스의 equals()는 null검사를 해준다. a, b가 모두 null이면 참을 반환한다.
+- deepEquals(): 객체를 재귀적으로 비교해 다차원 배열 비교가 가능하다. equals()와 반복문을 함께 쓰지 않아도 된다.
+- toString(Object o, String nullDefault): 내부적으로 널 검사를 한다. 두번째 매개변수를 입력할 경우 null이면 대신 사용할 값을 지정할 수 있어서 유용하다. 
+- hashCode(): 내부적으로 널 검사를 하고 Object클래스의 hashCode()를 반환한다. null일 때는 0을 반환한다.
+- static import문을 사용하면 클래스 이름을 입력하지 않고 메서드를 사용할 수 있지만 Object클래스의 메서드와 이름이 같으면 컴파일러가 구분하지 못해 충돌이 난다. 그럴 때는 클래스 이름을 붙여줄 수밖에 없다. 
+
+
+
+#### 2.2 java.util.Random클래스
+
+- 난수를 얻는 방법은 이미 살펴본 Math.random()이 있다. 하지만 사실 내부적으로 Random클래스의 인스턴스를 생성해서 사용하는 것이므로 편한대로 선택해 쓰면 된다.
+
+```java
+double randNum = Math.random();
+double randNum = new Random().nextDouble(); // 두 문장은 같다.
+
+// 1 ~ 6사이 정수를 난수로 얻고자 할 때
+int num = (int) (Math.random() * 6) + 1;
+int num = new Random().nextInt(6) + 1;      // nextInt(n)은 0~n사이의 정수를 반환. n포함x
+```
+
+- Math.random()과 Random의 가장 큰 차이점은 종자값(seed)을 설정할 수 있다는 것이다. 종자값이 같은 Random인스턴스들은 항상 같은 난수를 같은 순서로 반환한다. seed를 설정하지 않으면 System.currentTimeMillis()를 사용해 현재시간을 천분의 1초단위로 변환한 값을 종자값으로 하기 때문에 매번 값이 달라진다.
+- nextBoolean(), nextDouble(), nextFloat(): 각 타입의난수 반환, 범위는 0이상 1미만
+- nextLong(): long타입의 난수 반환(long 범위)
+- void nextBytes(byte[] bytes): bytes배열에 byte타입의 난수를 채워서 반환
+- void setSeed(long seed): 종자값을 주어진 값(seed)로 변경
+
+
+
+#### 2.3 정규식(Regular Expression) - java.util.regex패키지
+
+- 텍스트 데이터중 원하는 조건과 일치하는 문자열을 찾아내기 위해 사용. 많은 양의 텍스트 파일 중 원하는 데이터를 뽑아내거나 입력된 데이터가 형식에 맞는지 체크한다.
+
+```java
+// 정규식을 매개변수로 Pattern 클래스의 static 메서드인 Pattern compile(String regex)을 호출해 Pattern 인스턴스 얻기
+Pattern p = Pattern.compile("c[a-z]*");
+
+// 정규식으로 비교할 대상을 매개변수로 Pattern 클래스의 Matcher matcher(CharSequence input)를 호출해 Matcher인스턴스 얻기
+Matcher m = p.matcher(data[i]);
+
+// Matcher 인스턴스에 boolean matches()를 호출해 정규식에 부합하는지 확인
+if (m.matches())
+```
+
+- c[a-zA-Z0-9] == c\w: c로 시작하고 숫자나 영어로 조합된 두글자
+- .*: 모든 문자열
+- c.: c로 시작하는 두자리 문자열
+- c.*: c로 시작하는 모든 문자열(기호포함)
+- c.*t: c로 시작하고 t로 끝나는 모든 문자열
+- [b|c].* == [bc].* == [b-c].*: b 또는 c로 시작하는 문자열
+- .*a.+: a를 포함하는 문자열.
+  - +: 1 또는 그 이상의 문자. *과 달리 반드시 하나 이상의 문자가 있어야 한다.
+  - [b|c].{2}: b 또는 c로 시작하는 세 자리 문자열. (b 또는 c 다음에 두자리)
+- 정규식의 일부를 괄호로 나누어 묶어서 그룹화 할 수 있다. 그룹화된 부분은 하나의 단위로 묶여 +나 *이 뒤에 오면 그룹화된 부분이 적용대상이 된다. 그룹화된 부분은 group(int i)를 이용해 나누어 얻을 수 있다. group()이나 group(0)은 그룹으로 매칭된 문자열 전체를 나누어지지 않은 채로 반환한다. 
+- 0\\d{1,2}: 0으로 시작하는 최소 2자리 최대 3자리 숫자(0포함)
+- find(): 주어진 소스 내에서 패턴과 일치하는 부분 찾으면 true 반환. 일치점 찾고난 후 다시 호출하면 발견한 패턴 다음부터 다시 패턴매칭 시작
+- find()로 정규식과 일치하는 부분을 찾으면 start()와 end()로 위치를 알아낼 수 있다. (m.start(), m.end())
+- appendReplacement(StringBuffer sb, String replacement): 원하는 문자열로 치환 가능. 치환 결과는sb에 저장된다.
+
+```java
+while(m.find()) {
+    m.appendReplacement(sb, "drunken");
+}
+m.appendTail(sb);   // 마지막으로 치화된 이후 부분을 sb에 덧붙인다.
+```
+
+- " +": 하나 이상의 공백
+
+#### 2.4 java.util.Scanner 클래스
+
+- Scanner는 화면, 파일, 문자열 같은 입력소스로부터 문자데이터를 읽어오는데 도움을 줄 목적으로 JDK1.5부터 추가되었다. String, File, InputStream, Readable, ReadableByteChannel, Path 같은 생성자를 지원하므로 다양한 입력소스로부터 데이터를 읽을 수 있다.
+- 정규식 표현을 이용해 라인단위 검색 지원 & 구분자에도 정규식 표현 사용 가능: Scanner useDelimiter()
+- JDK1.6부터 java.io.Console이 추가되어 화면 입출력만 담당하지만 이클립스 같은 IDE에서는 잘 동작하지 않는다.
+
+```java
+// 파일 읽을 때
+Scanner sc = new Scanner(new File("data2.txt")); // 라인별로 파일을 읽고
+while (sc.hasNextLine()) {
+    String line = sc.nextLine();
+    Scanner sc2 = new Scanner(line).useDelimiter(",");  // ,를 구분해 각 데이터를 읽는다.
+}
+```
+
+
+
+#### 2.5 java.util.StringTokenizer클래스
+
+- 긴 문자열을 지정된 구분자를 기준으로 토큰이라는 여러 문자열로 잘라낸다. String의 split(String regex)나 Scanner의 useDelimiter(String pattern)이 있지만 이 두가지는 정규식 표현을 사용해야 한다. 하지만 StringTokenizer는 구분자로 단 하나의 문자밖에 사용하지 못한다.
+  - split()은 빈문자열 토큰으로 인식, StringTokenizer는 인식x
+  - split()은 결과 배열에 담아서 반환, StringTokenizer는 바로바로 잘라서 반환해 성능 나음
+- StringTokenizer(String str, String delim, boolean returnDelims): returnDelims를 true로 하면 구분자도 토큰으로 간주한다. 입력안하면 false
+- int countTokens(): 전체 토큰 수 반환
+- boolean hasMoreTokens(): 토큰이 남아있는지 알려줌
+- String nextToken(): 다음 토큰 반환
+- 구분자로 "+_()*&"가 들어가도 단 한 문자의 구분자만 사용가능하기 때문에 각각이 모두 구분자로 사용된다.
+
