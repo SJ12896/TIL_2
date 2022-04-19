@@ -89,7 +89,7 @@
 
 
 
-### 1.5 Iterator, ListIterator, Enumeration
+#### 1.5 Iterator, ListIterator, Enumeration
 
 - 컬렉션에 저장된 요소를 접근하는데 사용하는 인터페이스. Enumeration이 Iterator의 구버전이고 Listiterator가 기능이 향상된 버전이다.
 - Iterator: 컬렉션에 저장된 요소들을 읽어오는 방법 표준화. 컬렉션 요소에 접근하는 기능을 가진 Iterator인터페이스를 정의하고 Collection인터페이스에서는 Iterator를 반환하는 iterator()를 정의하고 있다.
@@ -113,3 +113,100 @@ sb.append("a").append("b").append("c");
 
 - Enumeration: 컬렉션 프레임웍이 만들어지기 전에 사용하던것. 구버전
 - ListIterator: Iterator를 상속받아 기능 추가. 양방향 이동 가능. 다만 List인터페이스를 구현한 컬렉션만 사용.
+
+
+
+#### 1.6 Arrays
+
+- 배열을 다루는데 유용한 메서드 정의.
+- setAll(): 배열을 채우는데 사용할 함수형 인터페이스를 구현한 객체나 람다식을 매개변수로 지정해야 한다.
+- binarySearch(): 저장된 요소 검색. 반드시 배열이 정렬된 상태여야 한다. 일치하는 요소가 여러개라면 어떤 것의 위치가 반환될지 알 수 없다.
+- deepToString(): 다차원 배열의 모든 요소 문자열로 출력
+- deepEquals(): 다차원 배열의 비교.equlas()로 다차원 배열을 비교하면 저장된 내용이 같아도 false를 얻는데, 배열에 저장된 배열의 주소를 비교하게 되기 때문이다.
+- asList(): 배열을 List에 담아서 반환. 매개변수 타입이 가변인수라서 배열 생성 없이 저장할 요소만 담아도 된다. 주의할 점은 asList()가 반환한 List의 크기는 변경할 수 없다. 추가, 삭제는 불가능하지만 저장된 내용 변경은 가능하다.
+- parallelXXX(): parallel로 시작하는 메서드는 빠른 결과를 얻기 위해 여러 쓰레드가 작업을 나누어 처리하게 한다.
+- spliterator(): 여러 쓰레드가 처리하도록 하나의 작업을 여러 작업으로 나누는 Spliterator를 반환한다.
+- stream(): 컬렉션을 스트림으로 변환한다.
+
+
+
+#### 1.7 Comparator와 Comparable
+
+- Arrays.sort()는 Character클래스의 Comparable의 구현에 의해 정렬되는 것이다. 
+- Comparable, Comparator는 **인터페이스**로, 컬렉션을 정렬하는데 필요한 메서드를 정의하고 있다.
+- Comparable을 구현한 클래스: 같은 타입 인스턴스끼리 서로 비교할 수 있는 클래스들, Integer같은 wrapper클래스와 String, Date, File같은 것들. 기본적으로 **오름차순**으로 정렬된다. 내림차순 또는 **다른 기준으로 정렬**하고 싶다면 **Comparator를 구현**해서 정렬기준을 제공할 수 있다.
+
+```java
+// Comparator와 Comparable의 실제 소스
+// compare과 compareTo는 두 객체가 같으면 0, 비교하는 값보다 작으면 음수, 크면 양수를 반환한다.
+
+public interface Comparator {
+    int compare(Object o1, Object o2);
+    boolean equals(Object obj);
+}
+
+public interface Comparable {
+    public int compareTo(Object o);
+}
+
+
+// 일반 문자열 오름차순 정렬은 공백, 숫자, 대문자, 소문자 순이다. 문자 유니코드 순서에 따라 정렬된다.
+// 다른 기준
+Arrays.sort(strArr, String.CASE_INSENSITIVE_ORDER); // 대소문자 구분안하고 정렬
+Arrays.sort(strArr, new Descending()); // 역순 정렬
+
+// 내림차순 정렬. compare의 매개변수가 Object 타입이기 때문에 compareTo를 바로 호출할 수 없어 먼저 Comparable로 형변환을 한다.
+class Descending implements Comparator {
+    public int compare(Object o1, Object o2) {
+        if (o1 instanceof Comparable && o2 instanceof Comparable) {
+            Comparable c1 = (Comparable)o1;
+            Comparable c2 = (Comparable)o2;
+            return c1.compareTo(c2) * -1; // 또는 c2.compareTo(c1)
+        }
+        return -1;
+    }
+}
+```
+
+
+
+#### 1.8 HashSet
+
+- Set인터페이스를 구현한 가장 대표적인 컬렉션. add나 addAll 메서드를 사용해 새로운 요소를 추가하는데 이미 저장된 요소라면 false를 반환한다. 저장순서를 유지하지 않기 때문에 유지하길 원한다면 LinkedHashSet을 사용해야한다.
+- HastSet()에 초기용량을 설정한 HashSet객체를 생성할 수 있는데 이 때 float loadFactor를 설정할 수도 있다. 이는 컬렉션 클래스에 저장공간이 가득차기 전 미리 용량을 확보하기 위한 것으로 0.8로 지정했다면 80%가 채워졌을 때 용량이 두 배로 늘어난다. 기본값은 0.75다.
+- 새로운 클래스를 만들어 HashSet에 해당객체를 추가할 때 두 인스턴스가 같은지 제대로 인식하게 하려면 add메서드가 새로운 요소 추가 전 호출하는 equals()와 hashCode()를 목적에 맞게 오버라이딩 해야 한다.
+
+```java
+class Person {
+    String name;
+    int age;
+    
+    Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+    
+    boolean equals(Object obj) {
+        if (obj instanceof Person) {
+            Person tmp = (Person) obj;
+            return name.equals(tmp.name) && age == tmp.age;
+        }  
+        return false;
+    }
+    
+    public int hashCode() {
+        return (name+age).hashCode();
+        // JDK 1.8부터 추가된 java.util.Objects클래스의 hash()를 이용해도 된다. 이 쪽을 추천
+        // Objects.hash(name, age);
+    }
+    
+    public String toString() {
+        return name + ":" + age;
+    }
+}
+```
+
+- 오버라이딩된 hashCode()는 세 조건을 만족시켜야 한다.
+  - 동일한 객체에 여러번 호출해도 동일한 int를 반환한다. Object클래스는 객체 주소로 해시코드를 만들어 실행할 때마다 해시코드값이 달라질 수 있다.
+  - equals()로 true를 얻은 두 객체에 대해 각각 hashCode()를 호출해서 얻은 결과는 반드시 같아야한다.
+  - equals()호출 시 false를 반환하는 두 객체는 hashCode()를 호출했을 때 같은 int를 반환하는 경우가 있어도 괜찮지만 해싱을 사용하는 컬렉션의 성능을 향상시키기 위해 다른 int를 반환하는게 좋다.
