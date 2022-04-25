@@ -210,3 +210,104 @@ class Person {
   - 동일한 객체에 여러번 호출해도 동일한 int를 반환한다. Object클래스는 객체 주소로 해시코드를 만들어 실행할 때마다 해시코드값이 달라질 수 있다.
   - equals()로 true를 얻은 두 객체에 대해 각각 hashCode()를 호출해서 얻은 결과는 반드시 같아야한다.
   - equals()호출 시 false를 반환하는 두 객체는 hashCode()를 호출했을 때 같은 int를 반환하는 경우가 있어도 괜찮지만 해싱을 사용하는 컬렉션의 성능을 향상시키기 위해 다른 int를 반환하는게 좋다.
+
+
+
+#### 1.9 TreeSet
+
+- 이진 검색 트리라는 자료구조 형태로 데이터를 저장하는 컬렉션 클래스. 정렬, 검색, 범위검색에 높은 성능을 보인다.
+- TreeSet은 이진 검색 트리 성능을 향상시킨 **레드-블랙 트리**로 구현되어 있다.
+- Set인터페이스를 구현했으므로 중복된 데이터 저장X, 정렬된 위치에 저장되므로 저장순서 유지X. 정렬된 상태를 유지하므로 검색, 범위 검색이 빠르다. 하지만 저장위치를 찾아서 저장하고 삭제하면 트리 일부를 재구성해야해서 링크드 리스트보다 추가, 삭제 시간이 더 걸린다.
+
+```java
+class TreeNode {
+    TreeNode left;
+    Object element;
+    TreeNode right;
+}
+```
+
+- 왼쪽 자식노드는 부모노드보다 작은 값, 오른쪽 자식 노드에는 부모 노드보다 큰 값을 저장한다.
+- TreeSet에 저장되는 객체가 Comparable을 구현하던가 Comparator를 제공해 두 객체를 비교할 방법을 알려줘야 한다.
+- 메서드
+  - Object ceiling(Object o): 같은 객체 반환. 없으면 큰 값 중 가장 가까운 객체 반환. 없으면 null
+  - Comparator comparator(): 정렬기준을 반환
+  - NavigableSet descendingSet(): TreeSet에 저장된 요소들을 역순으로 정렬해서 반환
+  - Object floor(Object o): 같은 객체 반환. 없으면 작은 값 중 가장 가까운 객체 반환. 없으면 null
+  - SortedSet headSet(Object toElement, boolean inclusive): 지정된 객체보다 작은 값의 객체들 반환. inclusive가 true면 같은 값도 포함
+  - Object higher(Object o) / lower(Object o): 큰 값 / 작은 값 중 가장 가까운 객체 반환. 없으면 null
+  - Object pollFirst() / pollLast(): 첫 요소 / 마지막 요소 반환
+  - boolean retainAll(Collection c): 컬렉션과 공통된 요소만 남기고 삭제(교집합)
+  - SortedSet subSet(Object fromElement, Object toElement): 범위 검색 결과 반환(끝범위 포함X), from Inclusive와 toInclusive로 조정가능
+  - SortedSet tailSet(Object fromElement): 지정 객체보다 큰 값의 객체들 반환
+  - Object[] toArray(): 지정된 객체를 객체배열로 반환
+- 문자열 정렬순서는 코드값이 기준: 공백, 숫자, 대문자, 소문자으로 정렬된다.
+
+
+
+#### 1.10 HashMap과 Hashtable
+
+- Vector와 ArrayList처럼 구-신 버전 관계다. 마찬가지로 새로운 버전인 HashMap사용을 권장한다.
+- 해싱을 사용해 많은 양 데이터 검색에 뛰어나다. 
+- 실제소스를 살펴보면 HashMap은 Entry라는 내부 클래스를 정의해 key, value를 가진다. 그리고 Entry타입의 배열을 선언해 서로 관련된 값인 키와 값을 각각 배열이 아닌 하나의 클래스로 정의해 하나의 배열로 다룬다. (객체지향적인 코드)
+- HashMap은 키, 값을 각각 Object 타입으로 저장한다. 따라서 어떤 객체도 저장할 수 있지만 키는 주로 String대문자나 소문자를 통일해서 사용한다.
+- Set entrySet(): HashMap에 저장된 키와 값을 엔트리(키-값의 결합) 형태로 Set에 저장해서 반환
+- Hashtable은 키, 값으로 null을 허용하지 않지만 HashMap은 허용
+- 해싱: 해시함수를 이용해 데이터를 해시테이블에 저장하고 검색하는 기법. 해시함수는 데이터가 저장되어있는 곳을 알려줘 원하는 데이터를 빠르게 찾을 수 있다. 해싱에서 사용하는 자료구조는 **배열과 링크드 리스트의 조합**으로 되어 있다. 저장할 데이터 키를 해시 함수에 넣으면 배열의 한 요소를 얻게 되고 다시 그곳에 연결된 링크드 리스트에 저장하게 된다. 다만 링크드 리스트는 크기가 커질수록 검색에 시간이 걸리므로 많은 서랍에 하나의 데이터만 저장되어있을 때 빨라진다. 반면 배열은 크기가 커져도 원하는 요소가 몇번째에 있는지만 알면 배열 인덱스가 n인 요소 주소 = 배열의 시작주소 + type의 size * n이라는 공식에 의해 빠르게 찾을 수 있다.
+- 해싱을 구현한 컬렉션 클래스는 Object클래스에 정의된 hashCode()를 해시함수로 사용한다. 객체의 주소를 이용해 알고리즘으로 해시코드를 만들어낸다. String클래스는 Object의 hashCode()를 오버라이딩해 문자열 내용으로 해시코드를 만들어낸다. 그래서 같은 내용이면 같은 해시코드를 얻는다.
+- 새로운 클래스를 정의할 때 equals()를 재정의 오버라이딩해야하면 hashCode()도 재정의해서 equals가 true면 hashCode()도 결과값이 같게 해줘야한다.그렇지 않으면 다른 객체로 인식한다.
+
+
+
+#### 1.11 TreeMap
+
+- 이진검색트리 형태로 키-값 쌍 데이터를 저장해 검색과 정렬에 적합하다.
+- 검색은 대부분 HashMap이 TreeMap보다 뛰어나지만 범위검색, 정렬은 TreeMap을 사용하자.
+
+
+
+#### 1.12 Properties
+
+- HashMap 구버전인 Hashtable을 상속받아 구현. (String, String)형태로 저장하는 단순화된 컬렉션 클래스
+- 주로 애플리케이션 환경설정과 관련된 속성을 저장하는데 사용하며 데이터를 파일로부터 읽고 쓰는 편리한 기능 제공. 
+- 메서드
+  - String getProperty(String key, String defaultValue): 지정된 키의 값 반환. 디폴트 값 설정도 가능
+  - void list(PrintStream/PrintWriter out): 지정된 PrintStream/PrintWriter에 저장된 목록 출력
+  - void load(InputStream inStream / Reader reader): 지정된 InputStream/Reader로부터 목록을 읽어서 저장
+  - Enumeration propertyNames(): 목록의 모든 키가 담긴 Enumeration 반환(컬렉션 프레임웤 이전의 구버전이라 Iterator를 사용하지 않는다.)
+  - Object setProperty(String key, String value): 지정된 키와 값 저장. 기존에 같은 키로 저장된 값이 있으면 그 값을 Object로 반환하며 아니면 null반환
+  - void store(OutptStream out, String comments): 지정된 목록을 지정된 OutputStream에 출력(저장). comments는 목록에 대한 주석.
+
+
+
+#### 1.13 Collections
+
+- 컬렉션과 관련된 메서드 제공.
+- 멀티 쓰레드 프로그래밍은 하나의 객체를 여러 쓰레드가 동시에 접근할 수 있어 데이터 일관성 유지를 위해 공유되는 객체에 **동기화**가 필요하다. Vector, Hashtable같은 구버전은 자체적으로 동기화 처리가 되어있지만 멀티쓰레드가 아닌 경우 성능을 떨어뜨리는 요인이 된다.
+- 새로 추가된 ArrayList, HashMap같은 컬렉션은 필요한 경우에 java.util.Collections클래스의 동기화 메서드를 이용해 처리한다.
+
+```java
+static Collection synchronizedCollection(Collection c)
+```
+
+- 컬렉션에 저장된 데이터를 보호하기 위해 읽기전용으로 만들어야 할 때가 있다. 멀티 쓰레드 프로그래밍에서 여러 쓰레드가 하나의 컬렉션을 공유하면 데이터가 손상될 수 있는데 이를 방지할 때 사용한다.
+
+```java
+static Collection unmodifiableCollection(Collection c)
+```
+
+- 단 하나의 객체만 저장하는 싱글톤 컬렉션: 매개변수로 저장할 요소를 지정하면 해당 요소를 저장하는 컬렉션을 반환한다.
+
+```java
+static List singletonList(Object o)
+static Set singleton(Object o) // singletonSet 아님
+```
+
+- 컬렉션에 지정된 종류 객체만 저장할 수 있도록 제한하고 싶을 때
+
+```java
+static Collection checkedCollection(Collection c, Class type)
+```
+
+
+
