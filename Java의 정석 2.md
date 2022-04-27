@@ -311,3 +311,177 @@ static Collection checkedCollection(Collection c, Class type)
 
 
 
+## Chapter 12 지네릭스, 열거형, 애너테이션 generics, enumeration, annotaion
+
+### 1. 지네릭스(Generics)
+
+- 다양한 타입의 객체들을 다루는 메서드, 컬렉션 클래스 컴파일 시 **타입 체크**를 해주는 기능. 객체 타입 안정성 높이고(의도하지 않은 타입의 객체가 저장되는 것 막고 원래와 다른 타입으로 잘못 형변환되어 발생하는 오류 줄여줌) 형변환의 번거로움이 줄어든다. 또 타입체크와 형변환을 생략할 수 있어 코드가 간결해진다.
+- ArrayList와 같은 컬렉션 클래스는 다양한 종류의 객체를 담을 수 있지만 보통 한 종류의 객체를 담는다. 그런데 꺼낼때마다 타입체크를 하고 형변환을 하면 불편하고 원하지 않는 종류 객체가 포함되는 걸 막을 수 없다.
+- 지네릭 타입은 **클래스**와 **메서드**에 선언할 수 있다.
+
+```java
+// 지네릭 타입으로 변경하기 전
+class Box {
+    Object item;
+    
+    void setItem(Object item) { this.item = item; }
+    Object getItem() { return item; }
+}
+
+// 클래스에 선언하는 지네릭 타입. 클래스 옆에 <T>를 붙이고 Object를 모두 T로 바꾼다.
+class Box<T> {
+    T item;
+    
+    void setItem(T item) { this.item = item; }
+    T getItem() { return item; }
+}
+```
+
+- T: 타입 변수(type variable). 하지만 타입 변수는 T가 아닌 다른 문자를 사용해도 된다. E를 사용한 경우 element의 첫 글자에서 따왔다. 타입 변수가 여러개면 Map<K, V>처럼 콤마를 구분자로 나열한다. 기호가 다를 뿐 **임의의 참조형 타입**을 의미하는 것은 같다. 기존에 Object 타입을 사용해 형변환이 불가피했지만 이젠 원하는 타입을 지정하기만 하면 된다.
+
+```java
+// 지네릭 클래스인 Box 객체 생성. 사용될 실제 타입을 지정한다. 이를 지네릭 타입 호출이라고 함.
+// 지정된 타입 String은 매개변수화된 타입이라고 한다.
+Box<String> b = new Box<String>();
+b.setItem(new Object()); // String이외는 불가하므로 에러
+b.setItem("ABC");
+String item = b.getItem(); // 형변환 불필요
+```
+
+- 지네릭 도입되기 이전과의 호환을 위해 사용될 실제 타입을 지정하지 않고 new Box(); 처럼 기존 방식으로 객체를 생성하는 것이 허용되지만 경고가 발생한다. Box<Object>를 지정하면 지정하지 않은 것이 아니라 알고 적은 것이라 경고가 발생하지 않는다.
+- Box<T>: 지네릭 클래스. T의 Box 또는 T Box라고 읽는다.
+- T: 타입변수, 타입 매개변수
+- Box: 원시 타입. 컴파일 후 원시 타입으로 바뀐다.
+
+- 지네릭스의 제한
+  - 모든 객체에 동일하게 동작해야 하는 static멤버에 타입 변수 T를 사용할 수 없다. T는 인스턴스 변수로 간주된다. static 멤버는 대입된 타입의 종류에 관계없이 동일한 것이어야 하기 때문이다. 
+  - 지네릭 타입의 배열을 생성하는 것도 허용되지 않는다. 지네릭 배열 타입의 참조변수 선언은 가능하지만 new T[10]처럼 배열 생성은 안된다. new연산자는 컴파일 시점에 타입 T를 정확히 알아야하는데 클래스 컴파일 당시에는 알 수 없다. newInstance()와 같이 동적으로 객체를 생성하는 메서드를 사용하거나 Object배열을 생성하고 복사해 T[]로 형변환하는 방법 등을 사용한다.
+
+
+
+#### 1.3 지네릭 클래스의 객체 생성과 사용
+
+```java
+class Box<T> {
+    ArrayList<T> list = new ArrayList<T>();
+    
+    // 만들어진 객체에 사용할 때 대입된 타입과 다른 타입 객체는 추가할 수 없지만 참조변수가 Fruit라면 Apple같은 자손들은 이 메서드 매개변수가 될 수 있다.
+    void add(T item)         { list.add(item); }
+    T get(int i)             { return list.get(i); }
+    ArrayList<T> getList()   { return list; }
+    int size()               { return list.size(); }
+    public String toString() { return list.toString(); }
+}
+```
+
+- 지네릭 클래스의 객체를 생성할 때 참조변수와 생성자에 대입된 타입이 일치하지 않으면 상속관계여도 에러가 발생한다. 
+- 단, 두 지네릭 클래스 **타입**이 상속관계에 있고 **대입된 타입**이 같은 것은 괜찮다.
+
+```java
+Box<Apple> appleBox = new FruitBox<Apple>();
+```
+
+- JDK 1.7부터 추정이 가능한 경우 타입 생략이 가능하다. 참조변수 타입에 나와있어 생성자에 반복해서 지정해주지 않아도 되는 것이다.
+
+```java
+Box<Apple> appleBox = new Box<>();
+```
+
+
+
+#### 1.4 제한된 지네릭 클래스
+
+- 지네릭 타입에 extends를 사용하면 특정 타입의 자손들만 대입할 수 있게 제한할 수 있다. 인터페이스를 구현해야할 때도 implements가 아닌 extends를 사용하며 인터페이스와 클래스를 동시에 구현하면 &를 사용한다.
+
+```java
+class FruitBox<T extends Fruit & Eatable> {
+    ...
+}
+```
+
+
+
+#### 1.5 와일드 카드
+
+```java
+class Juicer {
+    // 매개변수 타입을 고정해두면 다른 매개변수가 올 수 없어 오버로딩을 해야하지만 지네릭 타입은 컴파일할 때만 사용하고 제거되어 지네릭 타입이 다르다고 오버로딩이 성립하지 않아 메서드 중복 정의가 된다.
+    static Juice makeJuice(FruitBox<Fruit> box) {  
+        String tmp = "";
+        for(Fruit f : box.getList()) temp += f + " ";
+        return new Juice(tmp);
+    }
+}
+```
+
+- 이럴 때 사용하는 게 **와일드 카드**다. 기호 ?로 표현하며 어떤 타입도 될 수 있다. &를 사용할 수 없다.
+  - <? extends T>: 상한 제한. T와 그 자손들만 가능
+  - <? super T>: 하한 제한. T와 그 조상들만 가능
+  - <?>: 제한 없이 모든 타입 가능. <? extends Object>와 동일
+- 따라서 앞선 makeJuice 메서드 매개변수를 FruitBox<? extends Fruit>로 바꿀 수 있다. 만약 extends Object로 바꾼다면 아래 for문의 Fruit객체가 보장되지 않는다. 하지만 FruitBox 클래스 자체가 이미 <T extends Fruit>처럼 사용되어 FruitBox는 Fruit의 자손이란걸 알고 있어 에러가 발생하지 않는다.
+- comparator에 와일드카드를 사용하지 않으면 T에 Apple을 대입했을 경우, Grape를 대입했을 경우 마다 각각 Comparator가 필요하지만 조상 Comparator를 가능하게 하면 Comparator<Fruit>나 Comparator<Object>가 가능하다. 이런 장점 때문에 Comparator에는 항상 <? super T>가 습관적으로 따라 붙는다.
+
+```java
+static <T> void sort(List<T> list, Comparator<? super T> c)
+```
+
+
+
+#### 1.6 지네릭 메서드
+
+- 메서드 선언부에 지네릭 타입이 선언된 메서드. 지네릭 타입 선언 위치는 반환 타입 바로 앞이다.
+- 지네릭 클래스에 정의된 타입 매개변수와 지네릭 메서드에 정의된 타입 매개변수는 **전혀 별개의 것**이다.
+- 지네릭 메서드는 지네릭 클래스가 아닌 클래스에도 정의될 수 있다.
+- static 멤버는 타입 매개변수를 사용할 수 없지만 메서드에 지네릭 타입을 선언하고 사용하는 것은 가능하다.
+
+```java
+// 위에 나온 makeJuice()를 지네릭 메서드로 바꾸면
+    static <T extends Fruit> Juice makeJuice(FruitBox<T> box) {  
+        String tmp = "";
+        for(Fruit f : box.getList()) temp += f + " ";
+        return new Juice(tmp);
+    }
+
+// 메서드 호출할 때 이렇게 해야하지만
+Juicer.<Fruit>makeJuice(fruitBox)
+    
+// fruitBox 선언부에서 컴파일러가 추정가능하기 때문에 생략 가능하다.
+Juicer.makeJuice(fruitBox)
+```
+
+
+
+- 매개변수 타입이 복잡할 때 유용하다.
+
+```java
+public static void printAll(ArrayList<? extends product> list,
+                           ArrayList<? extends product> list2) {
+    for (Unit u: list) {
+        System.out.println(u);
+    }
+}
+
+// 지네릭 메서드
+public static <T extends Product> void printAll(ArrayList<T> list,
+                                                ArrayList<T> list2) {
+    for (Unit u: list) {
+        System.out.println(u);
+    }
+}
+```
+
+
+
+#### 1.7 지네릭 타입의 형변환
+
+- 지네릭 타입과 넌지네릭 타입간의 형변환은 경고가 발생하지만 가능하다. 하지만 대입된 타입이 다른 지네릭 타입간의 형변환은 불가능하다. 
+- Box<? extends Object> wBox = new Box<String>(); 는 매개변수에 다형성이 적용되어 형변환 가능하다.
+- 그 외 내용은 다시 읽어보고 이해하기
+
+
+
+#### 1.8 지네릭 타입의 제거
+
+- 컴파일러는 지네릭 타입으로 소스파일을 체크하고 필요한 곳에 형변환을 넣어준 다음 지네릭 타입을 제거한다. 이전 소스와의 호환성을 위해서다. 
+- <T extends Fruit>는 Fruit가 되고 <T>인 경우는 Object가 된다.
+- 지네릭 타입 제거 후 타입이 일치하지 않으면 형변환을 추가한다.
