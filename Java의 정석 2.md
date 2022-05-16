@@ -485,3 +485,199 @@ public static <T extends Product> void printAll(ArrayList<T> list,
 - 컴파일러는 지네릭 타입으로 소스파일을 체크하고 필요한 곳에 형변환을 넣어준 다음 지네릭 타입을 제거한다. 이전 소스와의 호환성을 위해서다. 
 - <T extends Fruit>는 Fruit가 되고 <T>인 경우는 Object가 된다.
 - 지네릭 타입 제거 후 타입이 일치하지 않으면 형변환을 추가한다.
+
+
+
+### 2. 열거형(enums)
+
+- 서로 관련된 상수를 편리하게 선언하기 위한 것. 여러 상수를 정의할 때 사용하면 유용하다. JDK 1.5부터 새로 추가되었다. 열거형이 갖는 값뿐만 아니라 타입도 관리해 논리적인 오류를 줄인다. `타입에 안전한 열거형(typesafe enum)`이라서 실제 값이 같아도 타입이 다르면 컴파일 에러가 발생한다.  또 상수 값이 바껴도 기존의 소스를 다시 컴파일하지 않아도 된다.
+
+```java
+class Card {
+    enum Kind { CLOVER, HEART, DIAMOND, SPADE } // 열거형 Kind를 정의
+    enum Value { TWO, THREE, FOUR } // 열거형 Value를 정의
+    
+    final Kind kind;   // 타입이 int가 아니라 Kind
+    final Value value;
+}
+
+// 체크
+if (Card.Kind.CLOVER == Card.Value.Two) // 컴파일 에러
+```
+
+- 열거형 상수간 비교는 ==을 사용가능하다. equals()가 아니라 그만큼 빠른 성능을 제공한다. 하지만 비교 연산자는 사용 불가능하고 compareTo()는 사용가능하다.(두 비교대상이 같으면 0, 왼쪽이 크면 양수, 오른쪽이 크면 음수)
+
+```java
+enum Direction { EAST, SOUTH, WEST, NORTH }
+
+// switch문의 조건식에도 사용 가능
+void move() {
+    switch (dir) {
+        case EAST: x++;    // Direction.EAST라고 쓰면 안된다. 상수 이름만 적는다.
+            break;
+        case WEST: x--;
+            break;
+        case SOUTH: y++;
+            break;
+        case NORTH: y--;
+            break;
+    }
+}
+```
+
+- .values(): 열거형에 정의된 모든 상수를 배열에 담아 반환한다.
+- .ordinal(): 모든 열거형 조상인 java.lang.Enum 클래스에 정의된 것으로 열거형 상수가 정의된 순서(0부터 시작)를 정수로 반환한다. 이 값은 내부적 용도로만 사용되기 위한 것으로 열거형 상수의 값으로 사용하지 않는 것이 좋다. 
+- class<E> getDeclaringClass(): 열거형 Class 객체 반환
+- name(): 열거형 상수 이름을 문자열로 반환
+- T valueOf(Class<T> enumType, String name): 지정된 열거형에서 name과 일치하는 열거형 상수를 반환.
+
+```java
+// 열거형 상수의 이름으로 문자열 상수에 대한 참조를 얻게 해준다.
+Direction d = Direction.valueOf("WEST");
+System.out.println(Direction.WEST == Direction.valueOf("WEST")); // true
+```
+
+- 열거형 상수의 값이 불연속적이면 열거형 상수 이름 옆에 원하는 값을 ()와 함께 적어주면 된다. 그리고 지정된 값을 저장할 수 있는 인스턴스 변수와 생성자를 새로 추가해주어야 된다. 주의할 점은 `열거형 상수를 모두 정의한 후 다른 멤버를 추가한다. 끝에 ;도 잊지 않는다.`
+- 필요하면 열거형 상수에 여러 값을 지정할 수 있으며 맞는 인스턴스 변수와 생성자도 새로 추가하면 된다.
+
+```java
+enum Direction {
+    EAST(1), SOUTH(5), WEST(-1), NORTH(10); // 끝에 ;필요
+    
+    private final int value; // 정수 저장할 필드(인스턴스 변수) 추가
+    Direction(int value) { this.value = value; } // 생성자 추가. 제어자가 private이기 때문에 외부에서 열거형 객체 생성 불가능.
+    
+    public int getValue() { return vlaue; }
+}
+```
+
+- 열거형에 추상 메서드 추가하기
+
+```java
+
+enum Transportation {
+    // 운송 수단 종류별로 상수를 정의하고 있다. 
+    BUS(100) {
+        int fare(int distance) { return distance * BASIC_FARE; }
+    },
+    TRAIN(150) { int fare(int distance) { return distance * BASIC_FARE; }},
+    TRAIN(150) { int fare(int distance) { return distance * BASIC_FARE; }};
+    
+    // 운송수단 별로 요금을 계산하는 방식이 다르므로 추상 메서드를 선언 후 각 열거형 상수가 구현하게 했다.
+    abstract int fare(int distance);
+    
+    // private이 아닌 protected로 설정해 각 상수에서 접근할 수 있게 만들었다.
+    protected final int BASIC_FARE;
+    
+    Transportation(int basicFare) {
+        BASIC_FARE = basicFare;
+    }
+}
+```
+
+- 열거형에 들어가는 상수 하나하나는 열거형의 객체이다. 클래스로 표현한다면
+
+```java
+class Direction {
+    static final Direction EAST = new Direction("EAST");
+    static final Direction SOUTH = new Direction("SOUTH");
+    static final Direction WEST = new Direction("WEST");
+    static final Direction NORTH = new Direction("NORTH");
+    
+    private String name;
+    
+    private Direction(String name) {
+        this.name = name;
+    }
+}
+```
+
+- 모든 열거형은 추상 클래스 Enum의 자손이다.
+
+```java
+// 그냥 MyEnum<T>로 선언했다면 compareTo를 사용할 수 없다. 타입 T에 ordinal이 정의되어 있는지 확인할 수 없기 때문이다. 타입 T가 MyEnum<T>의 자손이어야 한다는 의미로 타입 T가 MyEnum의 자손이므로 ordinal이 정의되어있는건 분명해 형변환 없이도 에러가 나지 않는다. -> 좀 더 이해가 필요할듯
+abstract class MyEnum<T extends MyEnum<T>> implements Comparable<T> {
+    static int id = 0;
+    
+    int ordinal;
+    String name;
+    
+    public int ordinal() { return ordinal; }
+    
+    MyEnum(String name) {
+        this.name = name;
+        ordinal = id++;
+    }
+    
+    // Comparable 인터페이스를 구현해 열거형 상수간 비교가 가능하다.
+    public int compareTo(T t) {
+        return ordinal - t.ordinal();
+    }
+}
+```
+
+
+
+### 3. 애너테이션(annotation)
+
+- 프로그램의 소스코드 안에 다른 프로그램을 위한 정보를 미리 약속된 형식으로 포함시킨 것.  주석처럼 프로그래밍 언어에 영향을 미치지 않으면서도 다른 프로그램에게 유용한 정보를 제공할 수 있다. JDK에서 기본적으로 제공하는 것과 다른 프로그램에서 제공하는 것들이 있는데 뭐든간에 `약속된 형식으로 정보를 제공하기만 하면 될 뿐이다.` JDK에서 제공하는 표준 애너테이션은 주로 컴파일러를 위한 것이다. 새로운 애너테이션을 정의할 때 사용하는 `메타 애너테이션`(애너테이션 적용대상(target)이나 유지기간(retention)등을 지정하는데 사용)도 있다.
+
+- 표준 애너테이션
+
+  - @Override: 컴파일러에게 오버라이딩하는 메서드라는 것을 알린다. 오버라이딩하면서 조상의 메서드 이름을 잘못 적으면 새로운 메서드로 인식해 오류가 발생하지 않는다. 그래서 @Override를 붙이면 조상에 있는지 확인해 없으면 오류가 발생한다.
+  - @Deprecated: 앞으로 사용하지 않을 것을 권장하는 대상에 붙인다. 다른 것으로 대체되어 더 이상 사용하지 않을 것을 권한다. 이게 붙은 대상을 사용하는 코드를 작성하면 컴파일시 메세지가 나타난다.
+  - @SuppressWarnings: 컴파일러의 특정 경고메시지가 나타나지 않게 해준다. 주로 deprecastion, unchecked(지네릭스 타입 지정X), rawtypes(지네릭스 사용X), vararags(가변인자 타입이 지네릭 타입) 같은 경고 메세지를 억제한다. 억제하려는 경고 메세지를 애너테이션 뒤의 괄호에 지정한다. 배열처럼 {}에 여러개를 지정할 수 있다. -Xlint 옵션으로 컴파일해 나오는 경고 내용 중 []안에 있는 것이 종류다.
+  - @SafeVrags: 지네릭스 타입의 가변인자에 사용한다.(JDK 1.7) 메서드에 선언된 가변인자 타입이 non-reifiable일 경우 해당 메서드 선언과 호출에서 unchecked가 발생한다. 이 경고를 억제하기 위해 사용한다. static, final이 붙은 메서드와 생성자에만 붙일 수 있다. `오버라이드될 수 있는 메서드에는 사용할 수 없다.` 컴파일 후에도 제거되지 않는 타입이 reifiable타입이고 제거되는 타입이 non-reifiable이다. 지네릭 타입은 대부분 제거된다. SuppressWarnings는 메서드가 호출되는 곳에서도 애너테이션을 붙여야하지만 SafeVarargs는 호출되는 곳도 자동으로 억제되게 한다. 또 varargs경고는 억제할 수 없어 @SafeVarargs와 @SuppressWarnings("varargs")를 습관적으로 같이 사용하는게 좋다. - > 이 부분도 이해가 더 필요하다.
+  - @FunctionalInterface: 함수형 인터페이스라는 것을 알린다(1.8) 함수형 인터페이스를 올바르게 선언했는지(예를 들어 추상 메서드가 하나여야 한다는 제약이 있다.) 확인해준다. 실수를 방지하게 붙이도록 하자.
+  - @Native: native메서드에서 참조되는 상수 앞에 붙인다.(1.8) 네이티브 메서드는 JVM이 설치된 os의 메서드다. 보통 C언어로 작성되어 있는데 자바는 메서드 선언부만 정의하고 구현은 하지 않는다. 모든 클래스 조상인 Object의 메서드들은 대부분 네이티브 메서드다. 호출하는 방법은 자바 일반 메서드와 같지만 실제 호출되는 것은 os의 메서드다. 내용이 없어 자바에 정의된 네이티브 메서드와 os의 메서드를 연결해주는 작업이 추가로 필요하다. `JNI(Java Native Interface)`가 그 역할을 하는데 이 책에서는 다루지 않는다.
+  - @Target: 애너테이션이 적용가능한 대상을 지정하는데 사용(메타) 지정가능한 애너테이션 적용대상 종류는 ANNOTATION_TYPE, CONSTRUCTOR, FIELD(멤버변수, enum상수, 기본형에 사용됨.), LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE(클래스, 인터페이스, enum), TYPE_PARAMETER(타입 매개변수-1.8), TYPE_USE(타입이 사용되는 모든 곳,  참조형에 사용됨, 1.8)
+  - @Documented: 애너테이션 정보가 javadoc으로 작성된 문서에 포함되게 한다.(메타) 기본 애너테이션 중 @Override, @SuppressWarnings를 제외하고는 모두 붙어 있다.
+  - @Inherited: 애너테이션이 자손 클래스에 상속되도록 한다.(메타) 
+  - @Retention: 애너테이션이 유지되는 범위 지정에 사용(메타) 유지정책으로 SOURCE(소스파일에만 존재, Override처럼 컴파일러가 사용하는 애너테이션의 유지정책.), CLASS(클래스 파일에 존재, 실행시에 사용불가, 기본값), RUNTIME(클래스 파일에 존재, 실행 시 사용가능, reflection을 통해 클래스 파일에 저장된 애너테이션 정보를 읽어서 처리 가능. @FunctionalInterface는 컴파일러가 체크하지만 실행 시에도 사용되므로 RUNTIME)
+  - @Repeatable: 애너테이션을 반복해서 적용할 수 있게 한다.(1.8, 메타) 일반 애너테이션과 달리 같은 이름의 애너테이션이 여러 개가 하나의 대상에 적용될 수 있어 하나로 묶어 다룰 수 있는 애너테이션도 추가 정의해야한다.
+
+  ```java
+  @interface ToDos {  // 여러 개의 ToDo애너테이션을 담을 컨테이너 애너테이션
+      ToDo[] value(); // 이름이 반드시 value
+  }
+  
+  @Repeatable(ToDos.class)  // 과롷 안에 컨테이너 애너테이션을 지정
+  @interface ToDo {
+      String value();
+  }
+  ```
+
+
+
+- @기호를 앞에 붙이는 걸 제외하면 인터페이스를 정의하는 것과 동일하게 정의한다. @Override는 애너테이션이고 Override는 애너테이션의 타입이다. 애너테이션 내에 선언된 메서드를 애너테이션 요소라고 한다. 애니테이션도 인터페이스처럼 상수를 정의할 수 있지만 디폴트 메서드는 정의할 수 없다. 메서드는 다른 애너테이션을 포함할 수 있다. 요소들은 반환값이 있고 매개변수는 없는 추상메서드 형태며 상속을 통해 구현하지 않아도 된다. 다만 애너테이션 적용시 이 요소들 값을 빠짐없이 지정해줘야 한다. 요소 이름도 같이 적어 지정하므로 순서는 상관없다. 기본값을 가질 수 있으며 null을 제외한 모든 리터럴이 가능하다.
+
+```java
+@interface TestInfo {
+    // 요소가 하나고 이름이 value면 애너테이션을 적용할 때 요소 이름을 생략하고 값만 적어도 된다.(요소 타입이 배열이도 가능하다.)
+    int count() defualt 1;
+    String[] info() defualt {"aaa", "bbb"};  // 기본값이 여러개
+    String testedBy();
+}
+```
+
+- 모든 애너테이션 조상은 Annotation이지만 상속이 허용되지 않는다. 또 이건 애너테이션이 아닌 일반 인터페이스로 정의되어 있다. 따라서 모든 애너테이션 객체는 조상의 equals(), hashCode(), toString() 메서드를 호출할 수 있다.
+
+- 마커 애너테이션: 값을 지정할 필요 없으면 요소를 정의하지 않아도 된다. Serializable이나 Cloneable인터페이스처럼 요소가 하나도 정의되지 않은 애너테이션이다.
+- 애너테이션 요소의 규칙
+  - 요소 타입: 기본형, String, enum, 애너테이션, Class
+  - ()안에 매개변수 선언 불가능
+  - 예외 선언 불가능
+  - 요소를 타입 매개변수로 정의 불가능
+
+- 클래스에 적용된 애너테이션을 실행시간에 얻으려면 
+
+```java
+// 클래스 객체를 의미하는 리터럴. 모든 클래스파일은 클래스로더에 의해 메모리에 올라갈 때 클래스 정보가 담긴 객체를 생성하는데 이 객체를 클래스 객체라고 한다. 이 객체를 참조할 때 클래스이름.class 형식 사용
+// 클래스 객체는 해당 클래스에 대한 정보르 ㄹ모두 가지며 애너테이션 정보도 포함된다. 
+// 클래스 객체의 getAnnotation()으로 메서드에 매개변수 정보를 얻고자하는 애너테이션을 지정하거나 getAnnotations()로 배열로 받는다. 
+Class<AnnotationEx5> cls = AnnotationEx5.class;  
+TestInfo anno = (TestInfo)cls.getAnnotation(TestInfo.class);
+```
+
+
+
