@@ -829,3 +829,183 @@ class ThreadEx1_2 implements Runnable {
 - 무한루프와 조건문을 이용해 실행 후 대기하다가 특정조건이 만족되면 작업을 수행하고 다시 대기한다.
 - 일반 쓰레드의 작성방법, 실행방법과 같지만 쓰레드 생성 후 setDaemon(true)를 호출해야 한다. 
 - getAllStackTraces()를 통해 실행중, 대기상태의 작업이 완료되지 않은 모든 쓰레드의 호출스택을 출력할 수 있는데 이를 통해 모든 쓰레드를 살펴보면 JVM이 가비지 컬렉션, 이벤트처리, 그래픽처리같은 보조작업을 위한 데몬 쓰레드를 자동적으로 생성한 것을 볼 수 있다. GUI를 가진 프로그램은 더 많은 데몬 쓰레드가 생성된다.
+
+
+
+#### 8. 쓰레드의 실행제어
+
+- 쓰레드 프로그래밍이 어려운 이유: 동기화(synchronization), 스케줄링(scheduling)
+
+- 정교한 스케줄링을 통해 프로세스에게 주어진 자원, 시간을 여러 쓰레드가 낭비없이 잘 사용하도록 한다.
+
+- 쓰레드의 생성 ~ 소멸
+
+  - 생성 후 start()를 호출하면 실행대기열에 저장되어 차례를 기다린다. 실행대기율은 큐(queue) 구조
+  - 자신의 차례가 오면 실행된다.
+  - 실행시간이 다되거나, yield(주어진 실행시간을 다른 쓰레드에게 양보하고 실행대기 상태가 된다.)를 만나면 다시 실행대기상태가 되고 다음 차례의 쓰레드가 실행상태가 된다.
+  - suspend(), sleep(), wait(), join(), I/O block에 의해 일시정지될 수 있음. I/O block은 입출력에서 발생하는 지연 상태로 사용자 입력을 기다리는 것 같은 경우가 있다.
+  - 일시정지 시간이 끝나거나, notify(), resume(), interrupt()가 호출되면 다시 실행대기열에 저장된다.
+  - 실행을 모두 마치거나 stop()이 호출되면 쓰레드는 소멸된다.
+
+- sleep(long millis): 일정시간동안 쓰레드를 멈추게 한다. 지정된 시간이 다 되거나 interrupt()가 호출되면 잠에서 깨어나 실행대기 상태가 된다.
+
+  - 항상 try-catch문으로 예외 처리를 해줘야한다. 매번 예외 처리하기 번거로워 try-catch를 포함하는 새로운 메서드를 만들어 사용하기도 한다.
+  - 아래의 경우 th1.sleep(2000);을 호출했지만 결과를 보면 th1이 가장 먼저 끝난다. sleep()은 **현재 실행 중인 쓰레드**에 대해 작동하기 때문에 실제 영향을 받는 것은 main쓰레드이다. 그래서 sleep()은 static으로 선언되어 있고 참조변수를 이용한 호출보다 Thread.sleep(2000);과 같이 해야 한다. 
+
+  ```java
+  public static void main(String args[]) {
+      ...
+     	th1.start();
+  	th2.start();
+      
+      try {
+          th1.sleep(2000);
+      } catch (InterruptException e) {}
+  }
+  ```
+
+- interrupt()와 interrupted(): 쓰레드 작업 취소 요청을 한다. 강제로 종료시키지는 못한다. interrupted상태(인스턴스 변수)를 바꿀 뿐이다. interrupted()는 interrupt()가 호출되었는지 상태 반환 후, false로 변경한다. isInterrupted()는 상태만 반환하고 false로 초기화하지 않는다.
+
+  - 아래 예제에서 Thread.sleep(1000); 타이밍에 interrupt()를 호출해 InterruptedException이 발생하면 쓰레드의 interrupted상태는 자동으로 false로 초기화된다.  catch블럭에 interrupt()를 추가로 넣어주면 interrupted상태가 true로 다시 바꿔진다.  -> 실행상태가 아니라 대기상태에서 interrupt()때문에 실행대기가 된 상황이라 interrupted()는 false라는 말인 것 같다(?)
+
+  ```java
+  public static void main(String args[]) {
+      ...
+     	th1.start();
+  	th2.start();
+      
+      String input = JOptionPane.showInputDiaolog("입력하세요");
+      System.out.println("입력한 값은" + input + "입니다.");
+      th1.interrupt();
+      System.out.println(th1.isInterrupted());
+  }
+  
+  class ThreadEx14_1 extends Thread {
+      public void run() {
+          int i = 10;
+          
+          while (i != 0 && isInterrupted()) {
+              System.out.println(i--);
+              try {
+                  Thread.sleep(1000);
+              } catch (InterruptException e) {}
+          }
+      }
+  }
+  ```
+
+- suspend(): sleep()처럼 쓰레드를 멈춘다. resume(): suspend()에 의해 정지된 쓰레드를 실행대기 상태로 만든다, stop(): 호출 즉시 쓰레드가 종료된다.
+
+  - suspend(), stop()은 교착상태(deadlock)을 일으키기 쉬워 deprecated(전에는 사용되었지만 앞으로 사용을 권장하지 않는다)되었다.
+  - 755페이지 다시 보기
+
+- yield(): 다른 쓰레드에게 양보한다. yield()와 interrupt()를 적절히 사용하면 프로그램 응답성을 높이고 효율적인 실행을 할 수 있다.
+
+  - 아래 예제에서 else { Thread.yield(); }가 없다면 suspended가 true일 때 남은 실행시간동안 while문을 반복하는 `바쁜 대기상태(busy-waiting)`지만 yield()로 양보하면 효율적이다.
+  - 2번 예제에서는 stop()이 호출되었을 때 Thread.sleep(1000); 에 의한 일시정지 상태라면 쓰레드가 정지될 때 까지 1초의 시간지연이 생긴다. 하지만 interrupt()를 호출하면 InterruptedException이 즉시 발생해 일시정지상태에서 벗어나 응답성이 좋아진다.
+
+  ```java
+  while (!stopped) {
+      if (!suspended) {
+          ...
+      } try {
+          Thread.sleep(1000);
+      } catch (InterruptedException e) {}
+  } else {
+      Thread.yield();
+  }
+  
+  // 2
+  public void suspend() {
+      suspended = true;
+      th.interrupt();
+  }
+  
+  public void stop() {
+      stopped = true;
+      th.interrupt();
+  }
+  ```
+
+- join(): 자신이 하던 작업을 멈추고 다른 쓰레드가 지정된 시간동안 작업을 수행하도록 기다린다. 시간을 지정하지 않으면 작업을 마칠 때까지 기다린다. interrupt()에 의해 대기 상태에서 벗어날 수 있고 try-catch문으로 감싸야 한다. sleep()과의 다른 점은 join()은 현재 쓰레드가 아닌 특정 쓰레드에 대해 동작하므로 static메서드가 아니라는 것이다.
+
+  - 가비지 컬렉션을 수행하는 쓰레드를 만들어 데몬 쓰레드로 설정하면 설정한 메모리 기준치 이상이 사용되어 gc를 interrupt()로 깨웠지만 수행되기 전에 main쓰레드 작업이 수행되어 메모리를 사용해 한도 메모리를 넘어서게 된다. 따라서 gc를 깨운 후 join()을 사용해 gc가 작업할 시간을 주고 main을 기다리게 한다.
+  - 데몬쓰레드는 우선순위를 낮추기보다 sleep()을 이용해 주기적으로 실행되다가 필요하면 interrupt()를 호출해 즉시 가비지 컬렉션이 이루어지도록 하는 것이 좋다.
+
+  ```java
+  if (gc.freeMemory() < requiredMemory) {
+      gc.interrupt();
+      // 추가된 부분
+      try {
+          gc.join(100);
+      } catch (InterruptedException e) {}
+  }
+  ```
+
+
+
+### 9. 쓰레드의 동기화
+
+- 멀티쓰레드 프로세스에서는 여러 쓰레드가 같은 프로세스 내의 자원을 공유해 작업하는데 만약 a 쓰레드가 작업하던 중 b 쓰레드로 제어권이 넘어가 a가 작업하던 공유데이터를 b가 변경했다면 예상과 다른 결과가 생기게 된다. 이 때문에 한 쓰레드가 특정 작업을 마치기 전까지 다른 쓰레드에 의해 방해받지 않도록 `임계 영역(critical section)`과 `잠금(락, lock)`이 도입되었다.
+- 공유 데이터를 사용하는 코드 영역을 임계 영역으로 지정하고 공유 데이터(객체)가 가진 lock을 획득한 단 하나의 쓰레드만 코드를 수행할 수 있게 한다. 해당 쓰레드가 임계 영역 내에서의 모든 코드를 수행하고 lock을 반납하면 다른 쓰레드가 이를 획득해 임계 영역에서 코드를 수행한다.
+- **한 쓰레드가 진행 중인 작업을 다른 쓰레드가 간섭하지 못하도록 막는 것을 쓰레드의 동기화(synchronization)**이라고 한다.
+- 자바에서 synchronized블럭과 JDK1.5부터 지원하는 java.util.concurrent.locks, java.util.concurrent.atomic 패키지를 통해 다양한 동기화를 구현할 수 있다.
+
+#### 9.1 synchronized를 이용한 동기화
+
+- 메서드 전체를 임계영역으로 지정: 메서드 전체를 임계 영역으로 설정. 메서드 호출 시점에 해당 메서드가 포함된 객체의 lock을 얻어 작업을 수행하고 메서드가 종료되면 반환한다.
+
+```java
+public synchronized void calcSum() {
+    
+}
+```
+
+- 특정한 영역을 임계 영역으로 지정: 메서드 내의 코드 일부를 블럭으로 감싸고 블럭 앞에 synchronized (참조변수)를 붙인다. `참조변수`는 락을 걸고자하는 객체를 참조하는 것이어야 한다. 이 블럭 영역 안으로 들어가며 지정 객체의 lock을 얻고 벗어나면 반납한다. 
+
+```java
+synchronized (객체의 참조변수) {
+    
+}
+```
+
+- 두 방법모두 lock의 획득, 반납이 자동적으로 이루어진다. 우리는 임계 영역만 설정하면 된다. 모든 객체는 lock을 하나씩 가지고 있고, 해당 객체의 lock을 가진 쓰레드만 임계 영역의 코드를 수행할 수 있다. 
+- 임계 영역을 멀티쓰레드 프로그램의 성능을 좌우하므로 메서드 전체보다 후자의 방법으로 효율적인 프로그램을 만들어야 한다.
+
+```java
+class Account {
+    // private이 아니면 외부에서 접근 가능해 동기화를 적용해도 balance값을 변경할 수 있다. 
+    private int balance = 1000;
+    
+    public void withdraw(int money) {
+        if (balance >= money) {
+            try { Thread.sleep(1000);} catch (InterruptedException e) {}
+            balance -= money;
+        }
+    }
+}
+
+// 메서드에 synchronized를 붙이거나
+public void withdraw(int money) {
+    synchronized(this) {
+        if (balance >= money) {
+            try { Thread.sleep(1000); } catch (InterruptedException e) {}
+            balance -= money;
+        }
+    }
+}
+```
+
+- 쓰레드를 2개 만들어 랜덤한 숫자를 출금하도록 한다면 if문에서 설정한 내용과 다르게 잔고가 음수가 될 때까지 실행된다. Thread.sleep(1000);에서 앞선 쓰레드가 출금직전 잠들어있고 두 번째 쓰레드가 if문을 통과하기 때문이다. 따라서 if문과 출금은 하나의 임계 영역으로 묶여야 한다. 
+
+#### 9.2 wait()와 notify()
+
+- 특정 쓰레드가 락을 가진 상태로 오랜 시간을 보낸다면, 예를 들어 출금할 돈이 부족해 입금될 때까지 기다린다면 다른 쓰레드도 모두 락을 기다려야 한다. 이때문에 wait, notify가 고안되었다. 작업을 더 이상 진행할 상황이 아니면 wait()를 호출해 락을 반납하고 기다린다. 다른 쓰레드가 락을 얻어 작업을 수행한후 다시 작업을 진행할 수 있는 상황이 되면 notify()를 호출해 작업이 진행된다.
+- 오래 기다린 쓰레드가 락을 얻는 보장은 없다. wait()가 실행되면 쓰레드는 해당 객체의 대기실(waiting pool)에서 통지를 기다린다. notify()가 호출되면 대기실의 모든 쓰레드 중 임의의 쓰레드만 통지를 받는다. notifyAll()은 모든 쓰레드에게 통지하지만 lock을 얻는 것은 하나뿐이다.
+- wait와 notify는 특정 객체에 대한 것이므로 Object 클래스에 정의되어 있다. 매개변수를 가진 wait는 지정 시간만 기다린 후 자동적으로  notify()가 호출된다.
+- 대기실은 객체마다 존재한다. 
+- 이들은 동기화 블록 내에서만 사용할 수 있다.
+- `772페이지`부터 나오는 식당에서 음식을 만들어 테이블에 추가하는 요리사와 음식을 소비하는 손님 쓰레드 구현을 참고
+- 손님과 요리사가 공유하는 테이블에 동기화를 적용하면 없는 음식을 가져가려 하는 등의 예외는 발생하지 않지만 음식이 없는 손님은 무한정 기다리게 된다. 손님 쓰레드가 테이블 객체의 lock을 가졌기 때문이다. 요리사는 lock이 없어 요리를 추가할 수 없다. 
+- 테이블이 꽉차면 요리사를 기다리게 하고 요리가 추가한 후에는 손님을 깨우며 요리가 없으면 손님을 기다리게 하고 요리가 소비된 후에는 요리사를 깨우는 흐름을 추가하면 정상적으로 돌아간다. 하지만 테이블 객체 waiting pool에 요리사, 손님이 함께 기다려 notify()가 호출되면 누가 통지를 받을지 알 수 없다. 운나쁘게 계속 잘못된 통지가 내려지면 오랫동안 기다려 `기아 현상(starvation)`이 일어난다. 이 현상을 막기 위해 notifyAll()을 사용해 일단 모든 쓰레드에게 통지해 원하는 쓰레드를 작업하게 할 수 있다. 하지만 모든 쓰레드가 통지를 받아 여러 쓰레드가 lock을 얻기 위해 `경쟁 상태(race condition)`가 일어난다.  결국 손님과 요리사를 구분해 통지할 필요가 있다.
+
