@@ -1078,3 +1078,224 @@ public Long compute() {
 - fork()는 작업을 쓰레드의 작업 큐에 넣는 것. 작업 큐에 들어간 작업은 나뉠 수 없을 때까지 나뉜다. compute()로 나누거 fork()로 작업큐에 넣는 것을 반복한 후 작업 결과는 join()을 호출해서 얻는다.
 - fork()는 비동기 메서드고 join()은 동기 메서드다. 따라서 fork()는 호출하면 결과를 기다리지 않고 다음 문장으로 넘어가고 compute()가 재귀호출될 때 join()은 호출되지 않다가 작업을 더 이상 나눌 수 없으면 재귀호출이 끝나고 join()의 결과를 받아서 반환한다.
 - 작업을 나누고 합치는데 걸리는 시간때문에 항상 멀티쓰레드가 빠를 수 없다. for문이 재귀보다 빠른 것과 같은 이유다.
+
+
+
+### Chapter 14 람다와 스트림
+
+- JDK1.5부터 추가된 지네릭스와 더불어 JDK 1.8부터 추가된 람다식(lambda expression)의 등장은 자바에 큰 변화를 만들었다.
+- 람다식의 도입으로 자바는 객체지향언어인 동시에 `함수형 언어`가 되었다. 
+- 람다식: 메서드를 하나의 식(expression)으로 표현한 것. 함수를 간략하면서도 명확한 식으로 표현할 수 있게 해준다. 메서드의 이름과 반환값이 없어지므로 `익명 함수(anonymous function)`이라고도 한다. 메서드는 클래스에 포함되야 하므로 클래스를 만들고, 객체도 생성해야 호출가능하지만 람다식은 그 자체만으로 메서드 역할을 대신할 수 있다. 또 메서드 매개변수로 전달되어지는게 가능하고 결과로 반환될 수도 있어 `메서드를 변수처럼` 다룰 수 있게 되었다.
+- 객체지향개념에서는 함수(function)대신 객체의 행위나 동작을 의미하는(method)라는 용어를 사용한다. 메서드는 함수와 같은 의미지만 특정 클래스에 속해야 한다는 제약이 있어 다른 용어를 사용한 것이다. 그러나 람다식을 통해 메서드가 `하나의 독립적인 기능`을 하기 때문에 함수라는 용어를 사용하게 되었다. 
+- 람다식은 메서드에서 이름과 반환타입을 제거하고 매개변수 선언부와 몸통 사이에 ->를 추가한다. 반환값이 있는 메서드는 return문 대신 식으로 대신한다. 식의 연산결과가 자동적으로 반환값이 된다. 이 때는 문장이 아닌 식이므로 끝에 ;를 붙이지 않는다.
+
+```java
+(int a, int b) -> a > b ? a : b
+```
+
+- 선언된 매개변수 타입은 추론이 가능한 경우 생략가능하며 대부분의 경우 생략 가능하다. 반환타입이 없는 이유도 추론이 가능하기 때문이다.
+
+```java
+(a, b) -> a > b ? a : b
+```
+
+- 선언된 매개변수가 하나면 괄호()를 생략할 수 있다. 단 매개변수 타입이 있으면 불가능하다.
+- 괄호{} 안의 문장이 하나면 생략 가능하다. 이 때 문장의 끝에 ;를 붙이지 않는다. 단 괄호 안의 문장이 return문일 경우 생략 불가능하다.
+
+```java
+(String name, int i) -> System.out.println(name + "=" + i)
+```
+
+
+
+#### 1.3 함수형 인터페이스(Functional Interface)
+
+- 자바에서 모든 메서드는 클래스 내에 포함되어야 한다. 람다식은 `익명 클래스의 객체`와 동등하다.
+
+```java
+(int a, int b) -> a > b ? a : b
+
+// 위와 동일하다. max는 임의로 지은 이름일 뿐이다.
+new Object() {
+    int max(int a, int b) {
+        return a > b ? a : b;
+    }
+}
+```
+
+- **참조변수**가 있어야 객체의 메서드를 호출할 수 있다. 익명 객체의 메서드 역시 마찬가지다. 이 때 참조변수의 타입은 `클래스, 인터페이스가 가능`하며 `람다식과 동등한 메서드가 정의되어 있는 것`이어야 한다. 그래야 참조변수로 익명 객체의 메서드를 호출할 수 있다. 
+
+```java
+@FunctionalInterface  // 컴파일러가 함수형 인터페이스를 올바르게 정의했는지 확인해주므로 꼭 붙이기
+interface MyFunction {
+    public abstract int max(int a, int b);
+}
+
+// 인터페이스를 구현한 익명 클래스의 객체
+My function f = new MyFunction() {
+    public int max(int a, int b) {
+        return a > b ? a : b;
+    }
+}
+
+int big = f.max(5, 3);
+
+// MyFunction에서 정의된 메서드는 람다식의 메서드의 선언부가 일치한다. 그래서 익명 객체를 람다식으로 대체할 수 있다.
+MyFunction f = (int a, int b) -> a > b ? a : b;
+```
+
+- 람다식도 실제로는 익명 객체이고, MyFunction를 구현한 익명 객체의 메서드와 람다식의 매개변수 타입, 개수, 반환값이 일치하므로 대체가능하다.
+- `하나의 메서드가 선언된 인터페이스를 정의`해서 람다식을 다루기로 결정되었고 이를 `함수형 인터페이스(functional interface)`라고 한다. 단 **오직 하나의 추상 메서드**가 정의되어 있어야 한다는 제약이 존재한다. 그래야 람다식과 인터페이스가 1:1로 연결될 수 있기 때문이다. static, default 메서드 개수는 제약이 없다.
+
+```java
+// 또 다른 예시. 인터페이스의 메서드 구현 복잡
+List<String> list = Arrays.asList("abc", "aaa", "bbb");
+
+Collections.sort(list, new Comparator<String>() {
+    public int compare(String s1, String s2) {
+        return s2.compareTo(s1);
+    }
+})
+    
+// 람다식으로 간단히 처리하기
+Collections.sort(list, (s1, s2) -> s2.compareTo(s1));
+```
+
+- 메서드의 매개변수가 MyFunction타입이면 이 메서드를 호출할 때 람다식을 참조하는 참조변수를 매개변수로 지정해야 한다. 혹은 참조변수 없이 직접 람다식을 매개변수로 지정해도 된다.
+
+```java
+void aMethod(MyFunction f) {
+    f.myMethod();
+}
+
+MyFunction f = () -> System.out.println("MyMethod()");
+aMethod(f);
+
+// 참조변수 없이
+aMethod(() -> System.out.println("MyMethod()"));
+
+// 메서드 반환타입이 함수형 인터페이스라면
+MyFunction myMethod() {
+    return () -> {};
+}
+```
+
+- 람다식을 참조변수로 다룰 수 있으므로 메서드를 통해 람다식을 주고받을 수 있다. `변수처럼 메서드를 주고받는 것이 가능`해졌다. 사실상 메서드가 아닌 `객체`를 주고받는 것으로 코드가 훨씬 간결해졌다.
+- 함수형 인터페이스로 람다식을 참조할 수 있는 것일 뿐, `람다식의 타입이 함수형 인터페이스 타입과 일치하는 것은 아니다.` 람다식은 익명 객체고, 익명 객체는 타입이 없다. (정확히는 있지만 컴파일러가 임의로 이름을 정한다.) 그래서 대입 연산자의 양변의 타입을 일치시키기 위해 `형변환이 필요`하다. 람다식은 MyFunction 인터페이스를 직접 구현한건 아니지만 이를 구현한 클래스의 객체와 완전히 동일해 이를 허용한다. 또 이 형변환은 생략 가능하다. 
+- 람다식은 이름이 없을 뿐 객체이지만 Object타입으로 형변환은 불가능하다. 오직 `함수형 인터페이스`로만 형변환이 가능하다. 굳이 Object로 변환하려면 먼저 함수형 인터페이스로 변환해야 한다.
+
+```java
+Object obj = (Object) (MyFunction)(() -> {});
+String str = ((Object) (MyFunction)(() -> {})).toString();
+```
+
+- 외부변수를 참조하는 람다식
+
+```java
+class Outer {
+    int val = 10;  // Outer.this.val
+    
+    class Inner {
+        int val = 20;  // this.val
+        
+        // 람다식 내에서 참조하는 지역변수는 final이 없어도 상수로 간주한다.
+        // Inner 클래스, Outer 클래스의 인스턴스 변수는 상수가 아니므로 변경 가능하다.
+        void method(int i) { // final int i
+            int val = 30;    // final int val = 30;
+            // i = 10;          상수의 값 변경 불가능
+            
+            MyFunction f = () -> {  // 매개변수로 i 불가능. 외부 지역변수와 같은 이름은 허용X
+                System.out.println("i : " + i);
+                System.out.println("val : " + val);
+                System.out.println("this.val : " + ++this.val);
+                System.out.println("Outer.this.val : " + ++Outer.this.val);
+            }
+        }
+    }
+}
+```
+
+
+
+#### 1.4 java.util.function패키지
+
+- 대부분 메서드는 매개변수 한 두개, 반환 값도 없거나 한 개뿐이며 지네릭 메서드로 정의하면 타입이 달라도 된다. 그래서 java.util.function패키지에 일반적으로 자주 쓰이는 형식의 메서드를 함수형 인터페이스로 정의해 두었다. 매번 새로운 함수형 인터페이스를 정의하기보다 `이 패키지의 인터페이스를 활용`하는 것이 좋다. 그래야 메서드 이름도 통일되고 재사용성, 유지보수 측면에서 좋다.
+- 803페이지(매개변수 없거나 하나, 반환 타입 없거나 하나, 매개변수 두 개인 함수형 인터페이스)
+- 두 개 이상의 매개변수를 갖는 함수형 인터페이스가 필요하면 직접 만들어서 써야한다.
+- 804페이지(매개변수와 반환타입이 일치, 컬렉션 프레임웍의 함수형 인터페이스)
+- 806페이지(기본형을 사용하는 함수형 인터페이스 - 위는 지네릭 타입으로 기본형을 처리할 때도 래퍼 클래스를 사용해 비효율적이었다.)
+- 매개변수와 반환타입이 모두 Integer라면 IntFunction을 사용할 수도 있지만(입력타입은 정해져있고 출력이 지네릭 타입) 매개변수와 반환타입이 일치하는 IntUnaryOperator를 사용해야 오토박싱&언박싱 횟수가 줄어들어 성능에 좋다. `UnaryOperator`잘 활용하기
+
+
+
+#### 1.5 Function의 합성과 Predicate의 결합
+
+- 위 패키지의 함수형 인터페이스는 추상메서드 외에 디폴트 메서드와 static메서드가 정의되어 있다. Function, Predicate에 정의된 메서드를 보면 다른 함수형 인터페이스 메서드도 유사해 응용 가능하다.
+- Funciton의 합성: 두 람다식을 합성해 새로운 람다식을 만들 수 있다. f.andThen(g)는 f를 적용하고 g를 적용하는 함수이고 f.compose(g)는 g를 먼저 적용하고 f를 적용한다.
+
+```java
+Function<String, Integer> f = (s) -> Integer.parseInt(s, 16);
+Function<Integer, String> g = (i) -> Integer.toBinaryString(i);
+Function<String, String> h = f.andThen(g);
+```
+
+- identity()는 함수를 적용하기 전과 후가 동일한 `항등 함수`가 필요할 때 사용하며 람다식으로는 x->x다. 잘 사용되진 않으며 map()으로 변환작업할 때 변환없이 그대로 처리하기 위해 사용한다. 
+
+- Predicate의 결합: 여러 Predicate를 and(), or(), negate()로 연결해 하나의 새로운 Predicate로 결합할 수 있다.
+
+```java
+Predicate<Integer> p = i -> i < 100;
+Predicate<Integer> q = i -> i < 200;
+Predicate<Integer> r = i -> i%2 == 0;
+Predicate<Integer> notP = p.negate();
+
+Predicate<Integer> all = notP.and(q.or(r));
+// 람다식을 직접 넣어도 된다.
+Predicate<Integer> all = notP.and(i -> i < 100).or(i -> i%2 == 0);
+```
+
+- static 메서드인 isEqual()은 두 대상을 비교하는 Predicate를 만들 때 사용한다. isEqual()의 매개변수로 비교 대상을 지정하고 또 다른 비교대상은 test()의 매개변수로 지정한다.
+
+```java
+Predicate<String> p = Predicate.isEqual(str1);
+boolean result = p.test(str2);
+
+// 합치면
+boolean result = Predicate.isEqual(str1).test(str2);
+```
+
+
+
+#### 1.6 메서드 참조
+
+- 람다식이 단 하나의 메서드만 호출하는 경우에 `메서드 참조(method reference)`라는 방법으로 람다식을 간략히 할 수 있다. 
+
+- 람다식 일부가 생략되었지만 컴파일러는 생략된 부분을 parseInt메서드의 선언부, Function 인터페이스에 지정된 지네릭 타입으로 쉽게 알아낸다.
+
+```java
+Function<String, Integer> f = (String s) -> Integer.parseInt(s);
+
+// 메서드 참조
+Function<String, Integer> f = Integer::parseInt;
+
+BiFunction<String, String, Boolean> f = (s1, s2) -> s1.equals(s2);
+
+// 메서드 참조. Boolean을 반환하는 equals메서드는 다른 클래스에도 있을 수 있기 때문에 클래스 이름이 필요하다.
+BiFunction<String, String, Boolean> f = String::equals;
+
+// 이미 생성된 객체의 메서드를 람다식에서 사용해다면 클래스 이름 대신 객체의 참조변수를 적는다.
+MyClass obj = new MyClass();
+Function<String, Boolean> f = (x) -> obj.equals(x);
+Function<String, Boolean> f2 = obj::equals;
+
+BiFunction<Integer, String, Myclass> bf = (i, x) -> MyClass(i, s);
+
+// 메서드 참조. 매개변수 개수에 따라 알맞은 함수형 인터페이스 사용.
+BiFunction<Integer, String, Myclass> bf = MyClass::new;
+
+Function<Integer, int[]> f = x -> new int[x];
+
+// 메서드 참조. 배열을 생성할 때
+Function<Integer, int[]> f2 = int[]::new;
+```
+
