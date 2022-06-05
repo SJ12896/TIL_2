@@ -1299,3 +1299,55 @@ Function<Integer, int[]> f = x -> new int[x];
 Function<Integer, int[]> f2 = int[]::new;
 ```
 
+
+
+#### 2. 스트림(stream)
+
+- 지금까지 데이터를 다룰 때 컬렉션이나 배열에 담아 데이터 소스마다 다른 방식으로 다뤘다. Collection과 Iterator와 같은 인터페이스를 이용해 컬렉션을 다루는 방식이 표준화됐지만 컬렉션 클래스마다 같은 기능 메서드들이 중복해서 정의되어있다. List는 Collections.sort(), 배열은 Arrays.sort()를 사용해 정렬한다. 
+- 이런 문제를 해결하기 위해 `스트림(Stream)`을 사용한다. `데이터 소스를 추상화(데이터 소스가 무엇이든 간에 같은 방식으로 다룰 수 있어 재사용성을 높인다.)`하고 데이터를 다룰 때 자주 사용되는 메서드를 정의해두었다. 배열, 컬렉션, 파일 데이터도 같은 방식으로 다룰 수 있다.
+- 스트림은 Iterator처럼 일회용이라 한 번 사용하면 닫혀서 다시 사용할 수 없다. 필요하면 재생성한다.
+- 내부 반복(반복문을 메서드 내부에 숨김)때문에 간결하다. forEach()는 스트림에 정의된 메서드로 매개변수에 대입된 람다식을 데이터 소스의 모든 요소에 적용한다. forEach는 스트림 요소를 소모하며 작업을 수행하므로 같은 스트림에 두 번 호출할 수 없다.
+
+```java
+String[] strArr = { "aaa", "bbb", "ccc" };    // 문자열 배열
+List<String> strList = Arrays.asList(strArr); // 문자열 list
+
+// 스트림 생성
+Stream<String> strStream1 = strList.stream();
+Stream<String> strStream2 = Arrays.stream(strArr);
+
+// 스트림으로 데이터 소스의 데이터를 읽어 출력하기
+// 람다식으로 표현하면 (str) -> System.out.println(str)
+strStream1.sorted().forEach(System.out::println);
+
+// 스트림은 데이터 소스로부터 데이터를 읽기만하고 변경하지 않기 때문에 필요하면 결과를 담아 반환
+List<String> sortedList = strStream2.sorted().collect(Collectors.toList());
+```
+
+- 스트림의 메서드 중 데이터 소스를 다루는 작업을 `연산(operation)`이라고 한다. 
+  - 중간 연산: 연산 결과가 스트림. 연속해서 중간 연산 가능
+  - 최종 연산: 연산 결과가 스트림이 아닌 연산. 스트림 요소를 소모하므로 `단 한번만 가능`
+  - 816쪽 연산 목록
+  - 중간 연산은 map, flatMap, 최종 연산은 reduce, collect가 핵심이다.
+  - **최종 연산이 수행되기 전까지 중간 연산이 수행되지 않는다.**
+- 요소 타입이 T인 스트림은 기본적으로 Stream<T>지만 오토박싱과 언박싱으로 인한 비효율을 줄이기 위해 데이터 소스의 요소를 기본형으로 다루는 스트림(IntStream등)이 제공된다. 보다 효율적이며 int로 작업하는데 유용한 메서드가 포함된다.
+- 병렬 스트림: 내부적으로 fork&join프레임웍을 사용해 연산의 병렬 수행이 가능하다. parallel() 메서드를 호출하면된다. sequential()은 반대지만 parallel() 호출을 취소할 때만 사용하면 된다.
+
+- 스트림만들기
+
+  - 컬렉션: Collection에 stream()이 정의되어 있다. 
+  - 배열: Stream에 of()와 Arrays에 stream()이 정의되어 있다. 기본형 배열을 소스로 하는 스트림을 생성하는 메서드도 있다.(IntStream.of(int.. values))
+  - 특정 범위의 정수: IntStream과 LongStream에 지정된 범위의 연속된 정수를 스트림으로 생성하는 range(), rangeClosed()가 있다. range는 끝범위가 포함되지 않고 rangeClosed에는 포함된다. 
+  - 임의의 수: Random클래스에 ints(), longs(), doubles()같은 인스턴스 메서드들이 포함되어 있다. 크기가 정해지지 않은 `무한 스트림`으로 limit()를 사용해 크기를 제한해야 한다. 또는 매개변수로 스트림 크기를 지정하면 유한 스트림을 생성하며 지정된 범위의 난수를 발생시키는 메서드도 있다. 단 end는 범위에 포함하지 않는다. 
+  - 람다식 - iterate(), generate(): 람다식을 매개변수로 받아 계산 값을 요소로 무한 스트림을 생성한다. iterate는 seed값부터 시작해 람다식에 의해 계산된 결과를 다시 seed값으로 해서 계산을 반복한다. generate()도 계산되는 값을 요소로 하는 무한 스트림을 생성하나 이전 결과를 이용해 계산하지 않는다. 다만 generate에 정의된 매개변수 타입은 Supplier<T>이므로 매개변수 없는 람다식만 허용된다. 그리고 두 메서드에 의해 생성된 스트림은 기본형 스트림 타입의 참조변수로 다룰 수 없다. (기본형 스트림을 Stream<>로 변경하려면 boxed()를 사용한다.)
+
+  ```java
+  Stream<Integer> evenStream = Stream.iterate(0, n->n+2);
+  Stream<Double> randomStream = Stream.generate(Math::random);
+  ```
+
+  - 파일: list()는 지정된 디렉토리에 있는 파일 목록을 소스로 하는 스트림을 생성해 반환한다. 또 한 행을 요소로 하는 메서드도 있으며 파일 뿐 아니라 다른 입력대상에서도 행단위로 읽는 lines()가 있다. 
+  - 빈 스트림: 연산 수행결과가 없을 때 null보다 빈 스트림 반환이 좋다.
+  - 두 스트림의 연결: concat()을 사용한다.
+
+- 823 ~ 835페이지에서 스트림의 중간연산 메서드와 사용방법
