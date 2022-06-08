@@ -1330,7 +1330,9 @@ List<String> sortedList = strStream2.sorted().collect(Collectors.toList());
   - 816쪽 연산 목록
   - 중간 연산은 map, flatMap, 최종 연산은 reduce, collect가 핵심이다.
   - **최종 연산이 수행되기 전까지 중간 연산이 수행되지 않는다.**
+  
 - 요소 타입이 T인 스트림은 기본적으로 Stream<T>지만 오토박싱과 언박싱으로 인한 비효율을 줄이기 위해 데이터 소스의 요소를 기본형으로 다루는 스트림(IntStream등)이 제공된다. 보다 효율적이며 int로 작업하는데 유용한 메서드가 포함된다.
+
 - 병렬 스트림: 내부적으로 fork&join프레임웍을 사용해 연산의 병렬 수행이 가능하다. parallel() 메서드를 호출하면된다. sequential()은 반대지만 parallel() 호출을 취소할 때만 사용하면 된다.
 
 - 스트림만들기
@@ -1351,3 +1353,109 @@ List<String> sortedList = strStream2.sorted().collect(Collectors.toList());
   - 두 스트림의 연결: concat()을 사용한다.
 
 - 823 ~ 835페이지에서 스트림의 중간연산 메서드와 사용방법
+
+- sorted(): 지정된 Comparator로 스트림을 정렬하거나 int값을 반환하는 람다식을 사용할 수 있다. Comparator를 지정하지 않으면 스트린 요소의 기본 정렬 기준으로 정렬한다. 단, 스트림 요소가 Comparable을 구현한 클래스가 아니면 예외가 발생한다.
+
+  - JDK 1.8부터 Comparator인터페이스에 static메서드, default 메서드가 많이 추가됐는데 이를 이용하면 정렬이 쉬워진다.
+
+```java
+strStream.sorted(Comparator.naturalOrder());     // 기본정렬
+strStream.sorted((s1, s2) -> s1.compareTo(s2));  // 기본정렬
+strStream.sorted(String::compareTo); // 기본정렬
+strStream.sorted(String.CASE_INSENSITIVE_ORDER);  // 대소문자 구분안함
+strStream.sorted(Comparator.comparing(String::length));     // 길이 순 정렬
+strStream.sorted(Comparator.comparintInt(String::length));  // no오토박싱
+
+// Comparator 인터페이스의 메서드 중 가장 기본적인건 comparing()이다. 정렬조건을 추가할 때는 thenComparaing()을 사용한다.
+studentStream.sorted(Comparator.comparing(Student::getBan)
+                    	.thenComparing(Student::getTotalScore))
+                    	.forEach(System.out::println);
+```
+
+- map(): 스트림 요소 값 중 원하는 필드만 뽑아내거나 특정 형태로 변환해야할 때 사용한다. filter()처럼 하나의 스트림에 여러 번 적용할 수 있다.
+
+```java
+fileStream.map(File::getName)           // Stream<File>에서 Stream<String>으로
+    .filter(s -> s.indexOf('.') != -1)  // 확장자 없으면 제외
+    .map(s -> s.substring(s.indexOf('.')+1))
+    .map(String::toUpperCase)  // 모두 대문자 변환
+    .distinct()                // 중복 제거
+    .forEach(System.out::print);
+```
+
+- peek(): 연산과 연산 사이에 올바르게 처리되었는지 확인하고 싶을 때 사용한다. forEach()와 다르게 스트림의 요소를 소모하지 않으므로 여러 번 끼워 넣어도 된다. filter(), map() 결과 확인할 때 유용하다.
+
+```java
+fileStream.map(File::getName)           // Stream<File>에서 Stream<String>으로
+    .filter(s -> s.indexOf('.') != -1)  // 확장자 없으면 제외
+    .peek(s -> System.out.printf("filename =%s%n", s))  // 파일명 출력
+    .map(s -> s.substring(s.indexOf('.')+1))
+    .peek(s -> System.out.printf("extension = %s%n", s))  // 확장자 출력
+    .forEach(System.out::print);
+```
+
+- mapToInt(), mapToLong(), mapToDouble(): map은 연산결과로 Stream<T>타입의 스트림을 반환하는데, 숫자 반환일 경우 IntStream같은 기본형으로 변환하는 것이 더 유용할 수 있다. 
+  - 기본형 스트림은 숫자를 다루는데 편리한 메서드를 제공한다.
+  - sum(), average(), max(), min(): sum을 제외하고는 OptionalDouble, OptionalInt로 제공하는데 이는 일종의 `래퍼 클래스`로 int, Double을 내부적으로 가지고 있다. sum은 스트림 요소가 없을 때 0을 반환하면 그만이지만 그 외는 평균값이 0이 나온다거나 할 수 있기 때문이다. 
+  - 이 메서드들은 최종연산으로 호출 후에 스트림이 닫힌다. 따라서 연속호출은 불가능하다.
+  - 따라서 모두 호출할 때 불편하기 때문에 `summaryStatistics()`라는 메서드가 따로 제공된다.
+  - 반대로 IntStream을 Stream<T>로 변환할 떄는 mapToObj()를, Stream<Integer>로 변환할 때는 boxed()를 제공한다.
+
+```java
+IntStream studentScoreStream = studentStream.mapToInt(Comparator.comparing(Student::getTotalScore);
+
+IntSummaryStatistics stat = scoreStream.summaryStatistics();
+long totalCount = stat.getCount();
+double avgScore = stat.getAverage();
+                                                      
+// CharSequence에 정의된 chars()는 String이나 StringBuffer의 문자들을 IntStream으로 다룰 수 있게 해준다.
+IntStream charStream = "12345".chars();                                                   int charSum = charStream.map(ch -> ch-'0').sum();
+```
+
+- flatMap(): 스트림의 요소가 배열이거나 map()의 연산결과가 배열인 경우, 즉 스트림의 타입이 Stream<T[]>인 경우, Stream<T>로 다루기 위해 사용한다. 
+
+```java
+Stream<String[]> strArrStrm = Stream.of(
+	new String[]{"abc", "def", "ghi"},
+    new String[]{"ABC", "DEF", "GHI"}
+);
+
+// Stream<String>으로 변환하려 했으나 원래의 문자열 배열이 각각 스트림 문자열 배열이 되어 스트림의 스트림 형태가 된다.
+Stream<Stream<String>> strStream = strArrStrm.map(Arrays::stream);
+
+// flatMap을 사용하면 각 요소가 하나의 스트림에 담긴 문자열 요소가 되어 하나의 스트림만 존재한다.
+Stream<String> strStream = strArrStrm.flatMap(Arrays::stream);
+```
+
+
+
+#### 2.4 Optional<T>와 OptionalInt
+
+- Optional<T>은 지네릭 클래스로 `T타입의 객체를 감싸는 래퍼 클래스`이다. 그래서 Optional타입의 객체는 모든 타입의 참조변수를 담을 수 있다. JDK 1.8부터 추가되었다. 최종 연산 결과를 Optional객체에 담아 반환하면 반환 결과가 null인지 if로 체크하지 않고 메서드를 통해 처리할 수 있다.
+
+```java
+Optional<String> optVal = Optional.of("abc");
+```
+
+- 참조변수 값이 null일 가능성이 있으면 of()대신 ofNullable()을 사용해야한다. of()는 NullPointerException이 발생할 수 있다. 
+- Optional<T>타입의 참조변수를 기본값으로 초기화할 때는` empty()`를 사용한다. null보다 바람직하다.
+
+```java
+Optional<String> optVal = Optional.<String>empty();
+```
+
+- 값을 가져올 때는 get()을 사용하지만 null일 때는 exception이 발생하므로 orElse()로 대체할 값을 지정할 수 있다. orElseGet()으로 람다식을 지정하거나 지정된 예외를 발생시키는 orElseThrow()도 존재한다.
+- Stream처럼 filter(), map(), flatMap()을 사용할 수 있다. 
+- isPresent()
+- ifPresent(): Optional<T>를 반환하는 findAny()나 findFirst(), reduce() 같은 최종 연산과 잘어울린다.
+- 기본형 스트림으로 OptionalInt등이 존재한다. OptionalInt에 0을 저장했을 때와 empty()를 저장했을 때 int의 기본값인 0이 저장되지만 isPresent(), getAsInt(), equasl()로 보면 다르다. 하지만 empty()와 null이 저장됐으면 동일하게 취급된다.
+
+
+
+#### 2.5 스트림의 최종 연산
+
+- 스트림 요소를 소모해서 결과를 만든다. 단일 값 또는 스트림 요소가 담긴 배열, 컬렉션일 수 있다.
+- forEach(): 스트림 요소의 출력 용도
+- allMatch(), anyMatch(), noneMatch(), findFirst(), findAny(): 매개변수로 Predicate요구. findFirst()는 주로 filter와 함께 사용되어 조건에 맞는 스트림 요소가 있는지 확인하는데 사용되고 병렬스트림인 경우에는 findAny()를 사용해야 한다. 이 둘의 반환 타입은 Optional<T>이며 스트림 요소가 없으면 비어있는 Optional객체를 반환
+- count(), sum(), average(), max(), min(): 기본형 스트림의 통계정보. 기본형이 아닐경우 count(), max(), min()만 메서드로 사용. 이를 사용하기보다는 기본형으로 변환하거나 reduce(), collect()를 사용해 정보를 얻는다.
+- 
