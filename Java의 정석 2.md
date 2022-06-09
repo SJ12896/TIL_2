@@ -1458,4 +1458,32 @@ Optional<String> optVal = Optional.<String>empty();
 - forEach(): 스트림 요소의 출력 용도
 - allMatch(), anyMatch(), noneMatch(), findFirst(), findAny(): 매개변수로 Predicate요구. findFirst()는 주로 filter와 함께 사용되어 조건에 맞는 스트림 요소가 있는지 확인하는데 사용되고 병렬스트림인 경우에는 findAny()를 사용해야 한다. 이 둘의 반환 타입은 Optional<T>이며 스트림 요소가 없으면 비어있는 Optional객체를 반환
 - count(), sum(), average(), max(), min(): 기본형 스트림의 통계정보. 기본형이 아닐경우 count(), max(), min()만 메서드로 사용. 이를 사용하기보다는 기본형으로 변환하거나 reduce(), collect()를 사용해 정보를 얻는다.
-- 
+- reduce(): 스트림의 요소를 줄여나가면서 연산을 수행해 최종결과 반환. 매개변수 타입이 BinaryOperator<T>. 처음 두 요소를 가지고 연산한 결과를 다음 요소와 연산하면서 스트림 요소를 하나씩 소모해 결국 모두 소모하고 결과를 반환한다. 초기값이 있는 경우에는 초기값과 스트림의 첫 요소로 연산을 시작한다. count(), sum()등도 내부적으로 reduce()를 이용한다. 타입이 IntStream일 경우엔 반환 타입이 OptionlInt로 지정되어 있어 이를 사용해야 한다. OptionalInt에서 꺼낼때는 getAsInt()를 사용한다. 
+
+
+
+#### 2.6 collect() - 844 ~ 863페이지
+
+- 스트림의 요소를 수집하는 최종 연산. 수집방법을 정의한 collector는 Collector인터페이스를 구현해 만들었다. Collector 인터페이스를 직접 구현해 컬렉터를 만들거나 미리 작성된 static메서드를 사용하기 위한 Collectors 클래스도 존재한다. collect의 매개변수는 Collector이다. 
+- 스트림의 모든 요소를 컬렉션에 수집하려면 Collectors 클래스의 toList()와 같은 메서드를 사용한다. 특정 컬렉션을 지정하려면 toCollection()에 해당 컬렉션의 생성자 참조를 매개변수로 넣어준다. Map은 키, 값 쌍으로 저장해야한다.
+
+```java
+List<String> names = stuStream.map(Student::getName).collect(Collectors.toList());
+ArrayList<String> list = names.stream().collect(Collectors.toCollection(ArrayList::new));
+Map<String,Person> map = personStream.collect(Collectors.toMap(p->p.getRegId(), p->p));
+```
+
+- 스트림에 저장된 요소들을 T[]타입 배열로 변환하려면 toArray()를 사용하고 **해당 타입 생성자 참조를 매개변수로 지정**해줘야 한다. 지정하지 않으면 반환되는 배열 타입은 Object[]다. 
+- 통계를 위해 counting(), summingInt(), averagingInt(), maxBy(), minBy()가 있다. 
+- 리듀싱은 reducing()
+- 문자열 결함 joining()
+- groupingBy(), partitioningBy(): 그룹화와 분할
+  - 그룹화: 스트림 요소를 특정 기준으로 그룹화. 스트림 요소를 Function으로 분류
+  - 분할: 지정 조건에 일치하는 그룹과 일치하지 않는 그룹으로 분할. 스트림 요소를 Predicate로 분류.
+  - 둘 다 결과는 Map에 담겨 반환.
+  - 통계와 함께 사용한 실제 예시는 851 ~ 860페이지
+
+#### 2.7 Collector 구현하기
+
+#### 2.8 스트림의 변환
+
