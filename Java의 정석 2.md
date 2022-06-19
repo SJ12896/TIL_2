@@ -1487,3 +1487,21 @@ Map<String,Person> map = personStream.collect(Collectors.toMap(p->p.getRegId(), 
 
 #### 2.8 스트림의 변환
 
+
+
+### Chapter 15 입출력 I/O
+
+- 컴퓨터 내부 또는 외부 장치와 프로그램간의 데이터를 주고받는 것. 
+- 입출력을 수행하려면(한쪽에서 다른 쪽으로 데이터를 전달하려면) 두 대상을 `연결`하고 데이터를 전송할 수 있는 무언가가 필요한데 이를 `스트림(데이터를 운반하는데 사용되는 연결통로)`이라고 한다. 14장의 스트림과는 다른 개념이다.
+- 스트림은 `단방향통신`만 가능하므로 하나의 스트림으로 입출력을 할 수 없다. 
+- 스트림은 큐와 같은 FIFO구조다.
+- 바이트 단위로 데이터를 전송하며 파일, 메모리, 프로세스, 오디오장치등 종류에 따른 입출력스트림을 가진다. 모두 InputStream, OutputStream의 자손들로 추상메서드를 구현했다. read()와 write(int b)외에는 추상메서드가 아니지만 read(), write(int b)를 사용해서 구현한 것이므로 먼저 구현하지 않으면 의미가 없다.
+- 스트림의 기능을 보완하는 `보조스트림`도 존재하는데 실제 데이터를 입출력하는 기능은 없지만 기능 향상, 새로운 기능 추가가 가능하다. 스크림을 생성한 후 이를 이용해 보조스트림을 생성한다. 예를 들면 버퍼를 사용해 입력 성능을 향상시키는 BufferedInputStream이 존재한다. 보조스트림 역시 InputStream, OuputStream의 자손들이다.
+
+```java
+FileInputStream fis = new FileInputStream("test.txt");
+BufferedInputStream bis = new BufferedInputStream(fis);
+bis.read();
+```
+
+- 스트림은 모두 바이트 기반으로 입출력 단위가 1byte였다. 하지만 Java에서 char형은 2byte기 때문에 문자를 처리하는데 어려움이 있어 문자 기반 스트림이 제공된다. InputStream은 `Reader`, OutputStream은 `Writer`이다. 다만 ByteArray 스트림만 CharArray로 변경된다. 
