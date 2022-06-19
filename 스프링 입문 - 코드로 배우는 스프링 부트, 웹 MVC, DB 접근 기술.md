@@ -1012,8 +1012,59 @@ public class SpringConfig {
 - Aspect Oriented Programming
 - 시간 측정 로직(공통 관심 사항)을 한 군데 모아 원하는 곳에 적용
 - 원래 controller에서 서비스를 호출하고 있었는데 AOP적용 후 컨트롤러에서 `프록시`(가짜 멤버 서비스)를 만들어서 컨테이너가 올라와 스프링 빈을 등록할 때 가짜 스프링 빈을 먼저 등록하고 이후에  joinPoint.proceed()를 호출해 내부적으로 여기저기 태운 후 실제 서비스를 호출한다.
+  - 이를 확인하기 위해 MemberController의 생성자에서 System.out.println("memberService= " + memberService.getClass());로 확인하면 콘솔창에는 memberService= class hello.hellospring.service.MemberService$$EnhancerBySpringCGLIB$$5b8ac77b라고 출력된다. 진짜 서비스가 아니라 CGLIB로 인한 proxy객체가 출력되는걸 볼 수 있다. 
 - controller, service, repository 순으로 진행되던게 전부 앞에 각각 프록시를 호출한 다음 진짜 controller, service, repository를 호출하도록 바뀌는 것이다.
-- DI덕분에 이런 기술이 가능한 것이다. 
+- DI덕분에 이런 기술 가능
+
+
+
+src/main/java/hello.spring/aop/TimeTraceAop.java
+
+- @Around: 타겟팅. 패키지명, 클래스명, 파라미터 타입 등 원하는 조건 넣기. 여기서는 해당 패키지에 전부 적용하도록 했다. 호출 될 때마다 joinPoint에서 원하는 걸 조작할 수 있다.
+- AOP를 @Component로 등록해서 찾게 하거나 SpringConfig에서 등록해서 사용하면 된다. @Service, @Repository처럼 정형화되어 등록하는 경우는 바로 가능하지만 AOP같은 경우는 SpringConfig에서 빈 등록을 권장한다고 했다. 그런데 막상 해보니 오류가 났는데 [순환참조 문제](https://www.inflearn.com/questions/48156)였다. SpringConfig 등록으로 사용하려면 Around 내용을 바꿔줘야 한다.
+
+```
+    @Bean
+    public TimeTraceAop timeTraceAop() {
+        return new TimeTraceAop();
+    }
+```
+
+```java
+package hello.hellospring.aop;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.springframework.stereotype.Component;
+
+@Aspect
+@Component
+public class TimeTraceAop {
+
+    @Around("execution(* hello.hellospring..*(..))")
+    public Object execute(ProceedingJoinPoint joinPoint) throws Throwable {
+        long start = System.currentTimeMillis();
+        System.out.println("START: " + joinPoint.toString());
+        try {
+            return joinPoint.proceed();
+        } finally {
+            long finish = System.currentTimeMillis();
+            long timeMs = finish - start;
+            System.out.println("END: " + joinPoint.toString() + " " + timeMs + "ms");
+        }
+    }
+}
+```
+
+- 콘솔창 예시
+
+```
+START: execution(String hello.hellospring.controller.HomeController.home())
+END: execution(String hello.hellospring.controller.HomeController.home()) 5ms
+```
+
+
 
 
 
