@@ -112,8 +112,8 @@ resources/META-INF/persistence.xml
 ### Hello JPA - 애플리케이션 개발
 
 - h2데이터베이스 실행 안됨 -> 서버 완전히 껐다가 다시 켜서 하기
-- jdbc:h2:~/test
-  jdbc:h2:tcp://localhost/~/test
+- jdbc:h2:~/test: 데이터베이스 파일 생성
+  jdbc:h2:tcp://localhost/~/test: 이후 연결
 
 
 
@@ -253,7 +253,9 @@ public class JpaMain {
 ### 준영속 상태
 
 - 영속 상태 엔티티가 영속성 컨텍스트에서 분리(detached)되면 영속성 컨테이너가 제공하는 기능을 사용할 수 없다. 
-- em.detach(entity) / em.clear() / em.close()
+- em.detach(entity)
+- em.clear(): 1차 캐시에서 초기화해서 쿼리문을 보고싶을 때 flush후 clear한다.
+- em.close()
 
 
 
@@ -277,3 +279,153 @@ public class JpaMain {
 - **운영에는 절대 create, create-drop, update 사용하지 말기.** 개발초기 단계는 create, update. 테스트 서버는 update, validate. 스테이징, 운영 서버는 validate, none
 - @Column에서 unique, length같은 제약조건을 추가하는건 실행 자체에 영향이 없고 DDL 생성에만 영향이 있다. 
 
+### 필드와 컬럼 매핑
+
+- persistence.xml에서 <property name="hibernate.hbm2ddl.auto" value="create" /> value를 통해 create, update등을 설정
+
+Member.java
+
+- @Column
+  - insertable
+  - updatable: 등록하고 변경하면 안될 때 false 
+  - nullable(DDL): false로 하면 not null 제약조건이 붙는다.
+  - unique(DDL): UNIQUE 제약조건 걸기. 잘안씀. 이름이 랜덤으로 이상하게 만들어져서 / @Table에서 uniqueConstraints는 이름을 지정할 수 있어 선호
+  - length
+  - columnDefinition: 'varchar(100) default 'EMPTY''로 적으면 그대로 이렇게 만들어진다.
+  - precision, scale: BigDecimal 타입에서 사용한다.
+- @Enumerated: ORDINAL은 순서를 DB에 저장, STRING은 이름을 DB에 저장. **ORDINAL이 기본인데 사용하지 말기** / ENUM클래스에 값을 추가하면 순서가 그대로 반영돼서 이전 데이터와 기준이 달라진다.
+- @Temporal: LocalDate, LocalDateTime을 지원하게 돼서 별로 필요없어졌다. 그냥 private LocalDate createDate2; 
+- @Lob: 문자면 CLOB매핑, 나머지는 BLOB매핑
+- @Transient: 필드매핑하지 않고 DB저장X, 메모리상에서만 임시로 값 보관하고 싶을 때
+
+```java
+package hellojpa;
+import javax.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Date;
+@Entity
+public class Member {
+    @Id
+    private Long id;
+
+    @Column(name = "name")
+    private String username;
+
+    private Integer age;
+
+    // Enum타입
+    @Enumerated(EnumType.STRING)
+    private RoleType roleType;
+
+    // 날짜 타입은 Temporal쓰고 3가지 타입이 있다.
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdDate;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date lastModifiedDate;
+
+    // clob같은 큰 컨텐츠
+    @Lob
+    private String description;
+    
+    //Getter, Setter…
+}
+```
+
+RoleType.java
+
+```java
+package hellojpa;
+
+public enum RoleType {
+    USER, ADMIN
+}
+```
+
+
+
+### 기본 키 매핑
+
+- @Id: 직접 할당
+
+- @GeneratedValue: 자동 생성. 속성 strategey는 default로 GenarationType.AUTO다.(DB에 맞게 자동으로 설정) 그 외는
+
+  - IDENTITY: DB에 위임, MYSQL(AUTO_INCREMENT) / 트랜잭션 커밋 시점에 INSERT SQL 실행. AUTO_INCREMENT는 INSERT 실행 후 ID 값을 알 수 있는데 영속성 컨텍스트는 PK 값을 알아야 1차 캐시에 저장된다. 그래서 em.persis()시점에 즉시 nsert 실행하고 db에서 식별자를 조회한다.
+  - SEQUENCE: DB 시퀀스 오브젝트 사용. 유일한 값을 순서대로 생성하는 데이터베이스 오브젝트, ORACLE / 클래스에 @SequenceGenerator이걸로 sequence를 만들어주지 않으면 h2시퀀스를 사용  / Long타입을 써야 맞다. 요즘엔 성능에 큰 영향이 없다. 10억이 넘었는데 타입을 바꾸는게 더 힘들다.
+    - @SequenceGenerator(name="MEMBER_DEQ_GENERATOR", sequenceName="MEMBER_SEQ", initialValue=1, allocationSize=1)
+    - allocationSize 기본 값은 50
+    - persist할 때 pk가 필요하기 때문에 call next value for MEMBER_SEQ가 실행된다. 
+    - 성능상 서버를 왔다갔다하는 걸 고려해 allocationSize를 설정한다. 이걸로 미리 allocationSize숫자만큼 가져와두는 방법이다. 다되면 nextCall을 호출하는 방식이다. 여러 웹서버가 있어도 동시성 이슈없이 해결된다. 처음 호출하면 두 번 호출되어 DB SEQ값이 1, 51이다. 50개씩 써야되는데 1이라 한 번 더 호출한 상황. 애플리케이션은 1, 2 순서로 쓰고 DB는 계속 51. 크게 호출하면 웹 서버 내리는 시점에 구멍이 생긴다. 
+  - TABLE: 키 생성 전용 테이블을 만들어 시퀀스 흉내. 모든 db에 적용 가능하지만 성능이 떨어진다. allocationSize, initalValue 속성 있음.
+
+  ```java
+  @Entity 
+  @TableGenerator( 
+   name = "MEMBER_SEQ_GENERATOR", 
+   table = "MY_SEQUENCES", 
+   pkColumnValue = “MEMBER_SEQ", allocationSize = 1) 
+  public class Member { 
+       @Id 
+       @GeneratedValue(strategy = GenerationType.TABLE, 
+       generator = "MEMBER_SEQ_GENERATOR") 
+       private Long id; 
+  }
+  ```
+
+- 권장하는 식별자 전략: null이 아니고 유일하고 변하지 않는 조건을 만족하는 자연키(주민등록번호, 전화번호 같은 것)는 찾기 어렵다. `대리키(대체키, 비지니스와 전혀 상관없음)`를 사용해야 한다. 권장은 **Long형 + 대체키 + 키 생성전략 사용**
+
+
+
+### 실전 예제 1 - 요구사항 분석과 기본 매핑
+
+- setter를 만들면 여기저기서 수정해야해서 유지보수에 안좋을 수 있다. 가급적 생성자로 세팅하게 되어있으면 좋다.
+- 스프링부트에서 jpa로 하이버네이트 시행하면 orderId를 자동으로 order_id로 만들어주지만 스프링부트가 아니면 그대로 만들어준다. 매핑 정보가 다 보이길 원한다면 name을 따로 지정해주자.
+- 주문한 사람을 찾기 위해서 주문 객체를 찾고 -> 주문 객체에서 멤버 아이디를 가져와서 -> 그걸로 다시 멤버를 찾으면 `객체지향` 느낌이 아니다. 대신 order에 Member객체가 있어 바로 꺼낼 수 있어야 한다. ORDER에 memberId가 있는 상황을 관계형 db에 맞춘 설계라고 한다. 테이블 외래키를 그대로 객체에 가져와 객체 그래프 탐색이 불가능하고 참조가 없어 uml도 잘못됨.
+
+
+
+## 연관관계 매핑 기초
+
+### 단방향 연관관계
+
+- 객체의 참조와 테이블의 외래키 매핑
+- 방향(단, 양) / 다중성(다대일, 일대일 등) / 연관관계의 주인(양방향 연관관계는 관리 주인 필요)
+- 객체를 테이블에 맞추어 데이터 중심으로 모델링하면 협력 관계를 만들 수 없다. 테이블은 외래키로 조인해서 연관 테이블을 찾고 객체는 참조를 사용해 연관 객체를 찾는다.
+
+
+
+- 객체지향 모델링으로 전환
+
+Member.java
+
+```java
+@Entity
+public class Member {
+
+    @Id @GeneratedValue
+    @Column(name="MEMBER_ID")
+    private Long id;
+    private String username;
+    
+//    @Column(name="TEAM_ID")
+//    private Long teamId;
+
+    @ManyToOne
+    @JoinColumn(name="TEAM_ID")
+    private Team team;
+    ...
+}
+```
+
+- Main클래스에서 Member로 팀을 찾을 때 하이버네이트가 보여주는 쿼리에서는 join을 사용한다. @ManyToOne(fetch=FetchType.LAZY)로 지정하면 쿼리가 분리되어 나간다.
+
+
+
+### 양방향 연관관계와 연관관계의 주인1 - 기본
+
+- 테이블 연관관계는 그대로 일대다 관계면서 
+
+
+
+- 연관관계 주인과 mappedBy: 객체와 테이블간 연관관계 맺는 차이를 이해해야 한다. 객체는 회원->팀, 팀->회원의 단방향 연관관계가 2개지만 테이블은 회원과 팀 연관관계가 양방향 하나다.
