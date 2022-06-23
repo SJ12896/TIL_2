@@ -424,8 +424,234 @@ public class Member {
 
 ### 양방향 연관관계와 연관관계의 주인1 - 기본
 
-- 테이블 연관관계는 그대로 일대다 관계면서 
-
-
-
 - 연관관계 주인과 mappedBy: 객체와 테이블간 연관관계 맺는 차이를 이해해야 한다. 객체는 회원->팀, 팀->회원의 단방향 연관관계가 2개지만 테이블은 회원과 팀 연관관계가 양방향 하나다.
+- 단방향 2개면 관련 데이터가 바꼈을 때 양쪽에서 다 바껴야 하는데 어떻게할까? db는 상관없이 그냥 테이블 데이터만 잘 바뀌면 된다. 이를 위해 `연관관계의 주인`이 필요하다.
+- 연관관계의 주인: 객체 두 개중 하나를 연관관계 주인으로 지정해 외래 키를 관리하게 한다. 주인이 아니면 읽기만 가능하다. 주인은 mappedBy속성을 사용하면 안된다. 주인이 아니면 mappedBy 속성으로 주인을 지정해야 한다.
+  - **외래 키가 있는 곳을 주인으로 정해라**. oneToMany에서 Many쪽이 주인.
+
+Member.java
+
+- 주인인 쪽
+
+```java
+    @ManyToOne
+    @JoinColumn(name="TEAM_ID")
+    private Team team;
+```
+
+Team.java
+
+- 컬렉션 생성해주는게 관례. nullPoint가 안되도록?
+
+```java
+    @OneToMany(mappedBy = "team")
+    private List<Member> members = new ArrayList<>(); 
+```
+
+
+
+### 양방향 연관관계와 연관관계의 주인2 - 주의점, 정리
+
+- 순수하게 객체지향적으로 생각하면 양쪽 다 값을 입력해야하는건 맞다. 주인쪽에서만 데이터를 넣고 반대쪽에서는 지정하지 않으면 생성한 team은 flush()를 하지않으면 1차 캐시에 있는 그대로 가져오기 때문에 members가 존재하지 않는다. 테스트할 때도 jpa없이 순수 자바로 진행하기 때문에 이런 오류가 발생할 수 있다.
+- 따라서 `순수 객체 상태를 고려해` 항상 양쪽에 값을 설정하자. 하지만 main에서 넣어주는 대신 Member의 setTeam에서 자신을 넣어주는 코드를 추가해 한쪽만 호출해 양쪽에 값을 넣게 설정할 수 있다. 이런 로직이 추가되면 setTeam이란 이름보다 changeTeam처럼 해주면 좋다. 아니면 Team에서 addMember를 만들어주어도 된다.
+
+```java
+// JpaMain.java
+            Team team = new Team();
+            team.setName("teamA");
+        //    team.getMembers().add(member); 연관관계 주인이 아니기 때문에 멤버를 먼저 생성하고 team에 add(member)를해도 db에서 null
+            em.persist(team);
+
+            Member member = new Member();
+            member.setUsername("member1");
+            member.setTeam(team);
+            em.persist(member);
+
+            team.addMember(member);
+
+// Team.java
+    public void addMember(Member member) {
+        member.setTeam(this);
+        members.add(member);
+    }
+
+// Member.java
+    public void setTeam(Team team) {
+        this.team = team;
+        team.getMembers().add(this);
+    }
+```
+
+
+
+- 양방향 매핑시엔 무한 루프를 조심해야한다. toString, lombok, JSON 생성 라이브러리 / toString쪽은 거의 쓰지말고 JSON 생성은  컨트롤러에는 엔티티 반환하지 말아야한다. 무한루프되거나 엔티티가 변경하면 API도 바뀌어버린다(?) 대신 DTO로 반환하는걸 추천
+
+```java
+    // team에서 toString생성할 때 members에서 toString을 호출해 무한루프
+    @Override
+    public String toString() {
+        return "Member{" +
+                "id= " + id +
+                ", username='" + username + '\'' +
+                ", team= " + team.toString() +
+                '}';
+    }
+```
+
+
+
+- 단방향 매핑만해도 연관관계 매핑은 완료된 거지만 양방향 매핑으로 반대 방향 조회(객체 그래프 탐색) 기능이 추가된 것이다. JPQL에서 역방향으로 탐색할 일이 많다. 단방향만 잘하고 `양방향은 필요할 때 추가(테이블 영향X)`
+
+
+
+### 실전 예제 2 - 연관관계 매핑 시작
+
+- ORDER클래스 같은 경우는 예약어일수도 있어서 ORDERS를 추천
+
+- 단방향만 설계해도 충분하다고 말하면서 Member의 orders는 정말 필요없는 코드라고 했는데 굳이 member -> orders찾기보다 db에서 생각하면 where조건으로 member id를 걸어 생각하는게 낫다고 한다.
+
+```java
+@Entity
+public class Member {
+    @OneToMany(mappedBy = "member")
+    private List<Order> orders = new ArrayList<>();
+}
+```
+
+
+
+## 다양한 연관관계 매핑
+
+- 다대일 단방향 주로 사용. 일대다 단방향을 실무에선 거의 사용하지 않는다. 일 테이블에서 다테이블 객체를 가져와서 거기에 add를 하기 때문에 결국 다테이블에 추가로 update가 실행된다. 내가 손대지 않은 엔티티와 관련된 쿼리가 실행되기때문에 운영할 때 힘들어진다.
+  - 일이 연관관계 주인이지만 테이블에서 다쪽에 외래키가 있어 객체와 테이블 차이로 반대편 테이블 외래키 관리가 특이하다. 
+  - 꼭 @JoinColumn을 사용해야한다. 아니면 조인 테이블이 하나 더 생겨버린다.
+- 일대다 양방향으로 설정한다면? 다 테이블에서 @JoinColumn(name="sdf", insertable = false, updatable = false) 로 설정해야 일테이블을 연관관계 주인으로 유지할 수 있다. 읽기 전용 필드를 사용해 양방향처럼 사용하는 방법으로 공식적으로 존재하지 않다. 사용하지 않는 편이 좋다.
+
+- 일대일: 주 테이블, 대상 테이블 중 외래 키 선택 가능. 외래 키에 유니크 제약조건 추가 / 다대일 단방향 매핑과 비슷하다. / 대상테이블에 외래 키 단방향 관계는 JPA지원X / 일대일이라 외래키가 어디에 있어도 상관없지만 추후 확장 가능성에 대해 고려해야한다. 성능상 많이 SELECT하는 테이블에 있게하면 좋다.
+  - 주 테이블에 외래키: 객체지향 개발자 선호, JPA 매핑 편리. 주 테이블만 조회해도 대상 테이블에 데이터가 있는지 확인 가능하지만 값이 없으면 외래 키에 null허용(DBA입장에서 치명적?)
+  - 대상 테이블에 외래 키가 존재: 전통적인 데이터베이스 개발자 선호. 주 테이블과 대상 테이블 관계가 일대다로 변할 때 테이블 구조 유지되는 장점이 있지만 프록시 기능 한계로 지연 로딩으로 설정해도 항상 즉시 로딩된다.(JPA는 프록시 만들려면 객체에 값이 있는지 알아야 한다. 대상 테이블에 값이 있는지 보려면 주 테이블만 보면 모르니까 대상 테이블에 확인해야하므로 쿼리가 실행되므로 프록시가 필요없다.)
+- 다대다는 실무에서 사용하면 안된다. 객체는 컬렉션을 사용해 객체 2개로 다대다 관계 가능하다. 연결 테이블이 연결만 하고 끝나지 않고 의도하지 않은 쿼리가 시행될 수 있다. 대신 @OneToMany, @ManyToOne을 만들고 알아서 중간 테이블(연결 테이블용 엔티티 추가)을 만들면된다. 여기서 원하는 데이터를 더 넣을 수 있다.
+
+```java
+    // Category.java
+    @ManyToMany
+    @JoinTable(name="CATEGORY_ITEM", joinColumns = @JoinColumn(name = "CATEGORY_ID"), inverseJoinColumns = @JoinColumn(name = "ITEM_ID"))
+    private List<Item> items = new ArrayList<>();
+
+    // Item.java
+    @ManyToMany(mappedBy = "items")
+    private List<Category> categories = new ArrayList<>();
+```
+
+- 셀프매핑
+
+```java
+@Entity
+public class Category {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @ManyToOne  // 자식에게 부모 하나
+    @JoinColumn(name="PARENT_ID")
+    private Category parent;
+
+    @OneToMany(mappedBy = "parent")
+    private List<Category> child = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name="CATEGORY_ITEM", joinColumns = @JoinColumn(name = "CATEGORY_ID"), inverseJoinColumns = @JoinColumn(name = "ITEM_ID"))
+    private List<Item> items = new ArrayList<>();
+}
+
+```
+
+
+
+## 고급 매핑
+
+### 상속관계 매핑
+
+- 관계형 데이터베이스는 상속관계 없음. 대신 슈퍼-서브타입이라는 모델링 기법이 유사하다. 3가지 모두 jpa 지원
+- 슈퍼타입 엔티티에서 @Inheritance(strategy =)를 지정해 각 전략을 사용할 수 있다. InheritanceType.JOINED, SINGLE_TABLE, TABLE_PER_CLASS(class도 abstract로 변경 필요) 그리고 각 서브 타입 엔티티에서 extends 슈퍼타입을 지정해야 한다.
+
+1. 각각 테이블로 변환 / `조인전략`: ITEM에 item_id(pk), ALBUM에 item_id(pk ,fk)이 존재하고 각각의 필드를 가져 insert를 2번한다. 또 item에는 album뿐 아니라 movie, book등도 존재하는데 슈퍼클래스에 @DiscriminatorColumn 애노테이션을 붙이면 DTYPE이 생성되며 각 타입값이 DB에 저장된다. name속성을 통해 dtype이 아닌 다른 이름으로 할 수도 있다.  그 다음 서브 클래스에 @DiscriminatorValue를 지정하면 DTYPE에 서브클래스명이 기록된다. 클래스명말고 다른 값을 쓰고싶다면 value속성을 이용하면 된다.
+   - 장점: 정규화가 되어있음. 제약조건을 슈퍼에 걸어 맞출 수 있고 공통 필드가 필요하면 ITEM테이블만 봐도 되는 경우가 있다. 외래 키 참조 무결성 제약조건 활용가능(FK활용), 저장공간 효율화
+   - 단점: 조회 시 조인 많이 사용해 성능 저하, 조회 쿼리 복잡, 데이터 저장시 INSERT 2번 / 심각한 단점은 아니지만 관리하기가 복잡하긴 하다.
+   - 가장 정석적인 방법
+2. 통합 테이블 변환 / `단일 테이블 전략`: 논리모델 단일 테이블로 합치기. 작가, 음악가, 배우등 모든 필드 내용이 item이라는 하나의 테이블에 존재 / insert문이 한번만 실행되고 select도 심플해 성능이 좋다. / DTYPE생성하는거 지정안해도 필수기때문에 알아서 생성된다.
+   - 장점: 조인 필요 없어서 조회 빠르고 조회 쿼리 단순
+   - 단점: 자식 엔티티가 매핑할 컬럼은 모두 null 허용, 단일 테이블에 모든걸 저장해 테이블이 커질 수 있고 상황에 따라 조회 성능 느려질 수 있음.
+3. 서브타입 테이블 변환 / `구현 클래스마다 테이블 전략`: 1번과 똑같지만 item없이 item에 공통으로 들어갈 수 있는 이름, 가격 등도 전부 앨범, 영화, 책 테이블에 따로 만든다. 단순할 때는 좋은데 조회할 때는 UNION으로 전부 합쳐서 검색해 복잡한 쿼리가 생성된다.
+   - **쓰면안됨**
+   - 예를 들어 정산해야할 때가 있으면 모든 테이블에 각각 시행해야 함
+   - 장점: 서브 타입 명확히 구분해 처리, not null 사용가능
+   - 단점: 여러 테이블 함께 조회 시 느림(UNION), 자식테이블 통합 쿼리 어려움.
+
+
+
+### Mapped Superclass - 매핑 정보 상속
+
+- 공통 매핑 정보가 필요할 때. 여러 테이블에 공통으로 들어가는 필드가 있을 때
+- 상속관계 매핑 아님. 엔티티 아님. 테이블과 매핑 안됨.
+- 부모 클래스를 상속 받는 자식 클래스에 매핑 정보만 제공.
+- 조회, 검색 불가(em.find(BaseEntity) 불가)
+- 직접 생성해서 사용할 일 없으므로 추상 클래스 권장
+- 테이블과 관계 없이 엔티티가 공통으로 사용하는 매핑 정보를 모으는 역할로 등록일, 수정일, 수정인같은 공통 적용 정보 모을 때 사용. @Entity 클래스는 Entity나 @MappedSuperclass로 지정한 클래스만 상속 가능하다.
+
+```java
+package jpabook.jpashop.domain;
+
+import javax.persistence.MappedSuperclass;
+
+@MappedSuperclass
+public class BaseEntity {
+    private String createdBy;
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+}
+
+// Team.java
+@Entity
+public class Team extends BaseEntity{
+    ...
+}
+```
+
+
+
+## 프록시와 연관관계 관리
+
+### 프록시
+
+- 테이블 조회할 때 외래키에 연관된 테이블까지 함께 조회해야할까?
+
+- em.find(): db를 통해 실제 엔티티 조회
+- em.getReference(): db 조회를 미루는 가짜(프록시) 엔티티 객체 조회 / getId는 이미 영속성 컨텍스트에 있어 찾은 객체의 id를 프린트해도 select 쿼리가 실행되지 않았지만 실제 사용되는 지점(username을 print할 때)에서 jpa가 db에 쿼리를 날려 요청한다. 
+  - getName()요청 -> jpa가 영속성 컨텍스트에 초기화 요청 -> 영속성컨텍스트가 db에 조회 요청 -> 실제 entity 생성
+- getClass를 print해서 살펴보면 프록시 객체가 보여진다. em.find는 진짜 객체를 주지만 getReference는 hibernate 내부라이브러리로 프록시라고 하는 가짜 엔티티 객체를 준다. 껍데기는 같지만 내부는 비어있는 객체다.
+- 실제 클래스를 상속 받아 만들어지고 실제 클래스와 겉 모양이 같아 사용자는 진짜인자 프록시인지 구분하지 않고 사용하면 된다. 하지만 타입 체크시 ==는 실패고 instance of를 사용해야 한다.
+- 프록시 객체는 실제 객체의 참조(target)를 보관. 프록시 객체를 호출하면 프록시 객체는 실제 객체의 메소드를 호출한다.
+- jpa표준 스펙에는 없고 하이버네이트가 구현하는 것
+- `특징`: 처음 사용할 때 한 번만 초기화. 초기화할 때 실제 엔티티로 바뀌는 게 아니다. 초기화되면 프록시 객체를 통해 `실제 엔티티에 접근 가능`. 하지만 영속성 컨텍스트에 찾는 엔티티가 이미 있으면 getReference()를 호출해도 실제 엔티티를 반환한다. 그 반대의 상황도 마찬가지라 프록시를 먼저 조회했으면 다음에 진짜 객체 찾아도 프록시가 반환된다.
+- 가져온 프록시를 detach, close, clear를 통해 준영속상태로 만들었을 때 프록시를 초기화하면 문제 발생. 
+- 프록시 인스턴스의 초기화 여부 확인: PersistenceUnitUtil.isLoaded()
+- 프록시 클래스 확인: entity.getClass().getName()
+- 프록시 강제 초기화: org.hibernate.Hibernate.initialize(); / JPA표준은 강제 초기화X
+
+
+
+### 즉시 로딩과 지연 로딩
+
+- 위에서 Main클래스에서 Member로 팀을 찾을 때 하이버네이트가 보여주는 쿼리에서는 join을 사용한다. @ManyToOne(fetch=FetchType.LAZY)로 지정하면 쿼리가 분리되어 나간다.라고 했는데
+  - 이렇게하면 객체를 proxy객체로 반환한다. 다대일 관계에서 다를 기준으로 일을 프록시로 가져온다.
+- 즉시로딩: @ManyToOne(fetch = FetchType.EAGER) / 한번에 다 가져와서 프록시가 아니라 진짜 객체를 가져온다. / 실무에서는 가급적 사용하지 말자. 예상하지 못한 sql 발생, JPQL에서 N+1문제 발생(select를 시행할 때 연관관계 테이블을 함께 바로 가져온다. 결과 N개 + 처음 쿼리 1개) / ManyToOne, OneToOne은 기본이 즉시 로딩 / OneToMany, ManyToMany는 기본이 지연로딩
