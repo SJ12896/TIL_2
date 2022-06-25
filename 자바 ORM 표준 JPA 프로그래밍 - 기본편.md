@@ -655,3 +655,265 @@ public class Team extends BaseEntity{
 - 위에서 Main클래스에서 Member로 팀을 찾을 때 하이버네이트가 보여주는 쿼리에서는 join을 사용한다. @ManyToOne(fetch=FetchType.LAZY)로 지정하면 쿼리가 분리되어 나간다.라고 했는데
   - 이렇게하면 객체를 proxy객체로 반환한다. 다대일 관계에서 다를 기준으로 일을 프록시로 가져온다.
 - 즉시로딩: @ManyToOne(fetch = FetchType.EAGER) / 한번에 다 가져와서 프록시가 아니라 진짜 객체를 가져온다. / 실무에서는 가급적 사용하지 말자. 예상하지 못한 sql 발생, JPQL에서 N+1문제 발생(select를 시행할 때 연관관계 테이블을 함께 바로 가져온다. 결과 N개 + 처음 쿼리 1개) / ManyToOne, OneToOne은 기본이 즉시 로딩 / OneToMany, ManyToMany는 기본이 지연로딩
+
+
+
+### 영속성 전이: CASCADE
+
+- 특정 엔티티 영속 상태로 만들며 연관 엔티티도 함께 영속 상태로 만들고 싶을 때
+- 영속성 전이는 연관관계 매핑과 관련이 없다. 함께 영속화하는 편리함뿐
+- ALL: 모두 적용 / PERSIST: 영속 / REMOVE: 삭제 주로 사용 (그 외: MERGE, REFRESH, DETACH)
+- 예를 들어 게시판-첨부파일 관계라면 쓸 수 있다. 그런데 파일이 다른 엔티티에서도 연관있다면 사용하면 안된다. `소유자가 하나일 때`만 써야한다.
+- 전제조건: 라이프사이클이 같고(등록, 삭제 등) / 단일 소유자일 때만 사용하자.
+- 고아객체: 부모 엔티티와 연관관계가 끊어진 자식 엔티티를 자동으로 삭제. / orphanRemoval = true
+  - 참조가 제거된 엔티티는 다른 곳에서 참조하지 않는 고아 객체로 보고 삭제하는 기능
+  - **참조하는 곳이 하나일 때 사용**
+  - 특정 엔티티가 개인 소유할 때 사용
+  - OneToOne, OneToMany만 가능
+  - CasCadeType.REMOVE처럼 동작
+- CasCadeType.ALL + orphanRemoval = true로 지정하면 스스로 생명주기를 관리하는 엔티티는 em.persist()로 영속화, em.remove()로 제거한다. 그리고 부모 엔티티로 자식 생명주기를 관리해 도메인 주도 설계(DDD)의 Aggregate Root 개념(Aggregate Root만 컨택하고 그 외 리포지토리를 만들지 않고 root를 통해 생명주기를 관리한다?)을 구현할 때 유용하다.
+
+```java
+// Parent.java
+@Entity
+public class Parent {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Child> childList = new ArrayList<>();
+
+    public void addChild(Child child) {
+        childList.add(child);
+        child.setParent(this);
+    }
+    
+    // getters and setters
+}
+
+// Child.java
+@Entity
+public class Child {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_id")
+    private Parent parent;
+    
+    // getters and setters
+}
+
+// JpaMain.java
+
+try {
+            
+            Child child1 = new Child();
+            Child child2 = new Child();
+
+            Parent parent = new Parent();
+            parent.addChild(child1);
+            parent.addChild(child2);
+    
+// 3번이나 persist 하지말고 parent중심으로 짜서 child를 관리하고 싶어서 cascade를 지정
+            em.persist(parent);
+
+            em.flush();
+            em.clear();
+            Parent findParent = em.find(Parent.class, parent.getId());
+            findParent.getChildList().remove(0);
+}
+```
+
+
+
+
+
+## 값 타입
+
+- JPA의 데이터 타입 분류
+  - 엔티티 타입: @Entity로 정의하는 객체. 데이터가 변해도 식별자로 지속해서 추적 가능
+  - 값 타입: int, Integer, String처럼 단순 값으로 사용하는 자바 기본 타입과 객체. 식별자 없고 값만 있어 변경시 추적 불가 / 값 타입을 소유한 엔티티에 생명주기를 의존함. / 복잡한 객체를 단순화하긴 개념. 값 타입을 단순하고 안전하게 다룰 수 있어야 한다.
+
+
+
+### 기본값 타입
+
+- 자바 기본 타입(int, double)
+- 래퍼 클래스(Integer, Long)
+- String
+- 생명주기를 엔티티에 의존. (회원 삭제하면 이름, 나이도 삭제)
+- 값 타입은 공유하면 안된다. (회원 이름 변경 시 다른 회원 이름이 변경되면 안된다.)
+- 자바의 기본 타입은 절대 공유X: 기본 타입은 항상 값을 복사한다. 저장공간이 서로 다르므로 원래 변수 값을 바꿔도 그걸 복사했던 변수의 값은 바뀌지 않는다. 래퍼 클래스(참조를 가져오기 때문에 공유가 된다)나 String같은 특수 클래스는 공유 가능 객체지만 변경X
+
+
+
+### 임베디드 타입(복합 값 타입)
+
+- `중요`
+
+- x, y 좌표 같은것?
+- 새로운 값 타입을 직접 정의할 수 있다. 주로 기본 값 타입을 모아서 만들어 복합 값 타입이라고도 한다. int, String과 같은 값 타입
+- 장점: 클래스라서 재사용, 높은 응집도, 해당 값 타입만 사용하는 의미있는 메소드 생성 가능
+- 임베디드 타입과 테이블 매핑: 임베디드 타입은 엔티티 값일 뿐이다. 사용 전후 매핑하는 테이블은 같다. 그런데 객체와 테이블을 `아주 세밀하게(find-grained)` 매핑하는 것이 가능하다. 잘 설계한 ORM 애플리케이션은 매핑한 테이블 수보다 클래스 수가 더 많다.
+- @Embedded로 같은 클래스를 2번 넣으면 에러 발생. 둘 중 하나에 @AttributeOverrides(value=AttributeOverride(name="city", column=@Column("WORK_CITY") ... )로 지정해주면 컬러 명 속성을 재정의한다.
+- 임베디드 타입의 값이 null이면 매핑한 컬럼은 모두 null이 된다.
+
+```java
+// Address.java
+@Embeddable
+public class Address {
+    private String zipcode;
+    private String street;
+    
+    // constructors, getters and setters
+}
+
+// Member.java
+@Entity
+public class Member {
+    ...
+    @Embedded
+    private Address homeAddress;
+}
+```
+
+
+
+### 값 타입과 불변 객체
+
+- 임베디드 타입 같은 값 타입을 여러 엔티티에서 공유하면 부작용이 일어날 수 있다. 
+- 진짜 둘 다 변경하고 싶었어도 값 타입이 아니라 엔티티를 써야 한다.
+
+```java
+// JpaMain.java
+try {
+            Address address = new Address("street", "zipcode");
+
+            Member member = new Member();
+            member.setUsername("member1");
+            member.setHomeAddress(address);
+            em.persist(member);
+
+            Member member2 = new Member();
+            member2.setUsername("member2");
+            member2.setHomeAddress(address);
+            em.persist(member2);
+
+            member.getHomeAddress().setStreet("newStreet"); // 첫번째 멤버 주소만 바꾸고 싶지만 실행해보면 둘 다 바껴있다.
+    
+
+            tx.commit();
+
+        }
+```
+
+- 값 타입의 실제 인스턴스인 값을 공유하는 것은 위험하므로 대신 값을 복사해서 사용해야 한다. 그런데 실수로 복사한 값을 넣으려다 원래 값을 넣어도 컴파일러 레벨에서 막을 수 있는 방법이 없다. 
+
+```java
+Address copyAddress = new Address(address.getZipcode(), address.getStreet());
+            Member member2 = new Member();
+            member2.setUsername("member2");
+            member2.setHomeAddress(copyAddress);
+```
+
+
+
+- `객체 타입의 한계`: 객체 타입은 참조 값을 직접 대입하는 것을 막을 방법이 없어 객체의 공유 참조는 피할 수 없다.
+- 불변 객체: 객체 타입을 수정할 수 없게 만들어 부작용 원천 차단. `값 타입은 생성 시점 이후 절대 값을 변경할 수 없는 객체인 불변 객체`로 설계해야 함. 생성자로만 값을 설정하고 수정자를 만들지 않거나 private으로 만들면 된다. Integer, String은 자바가 제공하는 대표적인 불변객체다.
+- 그렇다면 값을 바꾸고싶을 때는? 생성자를 새로 만들어 다시 set
+
+
+
+### 값 타입의 비교
+
+- 값 타입은 인스턴스가 달라도 값이 같으면 같다고 봐야한다. 그런데 기본타입말고 객체타입은 값 같아도 false로 나온다.
+- 동일성(identity) 비교: 인스턴스 참조 값 비교, == 사용
+- 동등성(equivalence) 비교: 인스턴스 값 비교, equals()사용
+- 값 타입은 equals를 사용해 동등성 비교를 해야 하므로 적절히 재정의(주로 모든 필드에서 사용) / hashCode도 같이 해줘야함.
+
+
+
+### 값 타입 컬렉션
+
+- `중요`
+- 자바 컬렉션에 기본이나 임베디드 값을 넣어준 것
+- 값 타입을 하나 이상 저장할 때 사용.  @ElementCollection, @CollectionTable 사용. db는 컬렉션을 같은 테이블에 저장할 수 있고 이를 위한 별도의 테이블이 필요하다.
+- 모든 라이프 사이클가 원래 클래스에 소속되어 있어 의존한다. 별도로 persist, update할 필요 없다.
+- @Embedded가 아닌 값 타입 컬렉션들은 지연로딩이기 때문에 원 테이블을 조회할 때 함께 나오지 않는다.
+- 각 타입은 불변이기 때문에 수정할 때 객체 컬렉션은 set하지 않고 새로운 생성자로 다시 넣는다. String 같은 기본값 컬렉션은 remove, add를 활용한다. 객체 컬렉션을 remove, add하면 원 객체와 관련있는 데이터를 모두 지운 후 삭제 하지 않은 데이터를 넣고 수정을 위해 새로 add한 데이터를 넣는다.
+- 영속성 전이와 고아객체 제거 기능을 필수로 가진다.
+- 값 타입은 엔티티와 다르게 식별자 개념이 없어 변경하면 추적이 어렵다. 변경 사항이 발생하면 주인 엔티티와 연관된 모든 데이터를 삭제하고 현재 값을 모두 다시 저장한다. @OrderColumn(name=...)같은 걸 써서 순서 값을 넣고 pk지정이 되지만 의도하지 않게 동작하는 경우가 많다.
+- 값 타입 컬렉션을 매핑하는 테이블은 모든 컬럼을 묶어 기본 키를 구성해야 한다. nullX, 중복 저장X
+- 너무 복잡하게 쓰려면 차라리 다르게 써야 한다. 실무에서 상황에 따라 값 타입 컬렉션 대신 일대다 관계를 고려한다. 일대다 관계를 위한 `엔티티를 만들고` 여기서 값 타입을 사용해서 `영속성 전이 + 고아 객체 제거를 사용`해 값 타입 컬렉션처럼 사용한다.
+
+```java
+// Member.java
+    @ElementCollection
+    @CollectionTable(name="FAVORITE_FOOD", joinColumns = @JoinColumn(name = "MEMBER_ID"))
+    @Column(name = "FOOD_NAME")  // 얘만 매핑하게 허용해줌? 값이 하나고 내가 정의한게 아니라
+    private Set<String> favoriteFoods = new HashSet<>();
+
+    @ElementCollection
+    @CollectionTable(name="ADDRESS", joinColumns = @JoinColumn(name = "MEMBER_ID"))
+    private List<Address> addressHistory = new ArrayList<>();
+```
+
+- 정리
+  - 엔티티 타입: 식별자 O, 생명 주기 관리, 공유
+  - 값 타입: 식별자X, 생명 주기 엔티티 의존, 공유하지 않는 것이 안전(복사해서 사용), 불변객체가 안전
+- 값 타입은 정말 값타입이라고 판단될 때만 사용한다. 식별자가 필요하고 지속해서 값 추적, 변경해야 하면 값 타입이 아닌 `엔티티`
+
+
+
+## 객체지향 쿼리 언어1 - 기본 문법
+
+### 소개
+
+- JPA는 다양한 쿼리 방법을 지원
+
+- 가장 단순한 조회 방법인 em.find()대신 where조건이 필요한 조회를 해야한다면?
+
+- JPQL: 표준 문법. JPA를 사용하면 엔티티 객체 중심으로 개발하는데 문제는 검색할 때 테이블이 아니라 엔티티 객체 대상으로 검색한다. 모든 DB데이터를 객체로 변환해 검색하는 것은 불가능하므로 애플리케이션이 필요한 데이터만 DB에서 불러오려면 결국 검색 조건이 포함된 SQL 필요 -> JPA가 SQL을 추상화한` JQPL이라는 객체 지향 쿼리 언어`를 제공. SQL과 문법이 유사하며 SELECT, FROM, WHERE, JOIN같은 ANSI표준이 지원하는 문법 지원하며 엔티티 객체 대상으로 쿼리하므로 특정 DB SQL에 의존하지 않는다.
+
+- JPA Criteria: 문자가 아닌 자바 코드로 짜서 JPQL을 빌드해주는 제너레이터. 원래 쿼리문은 단순 String이기 때문에 동적 쿼리를 만들기 힘들다. 단점은 sql스럽지 않다. 사실 강사님은 실무에서 안쓴다고 한다. 자기도 못알아봐서 유지보수가 어려웠다. 그래서 `QureyDSL` 사용 권장
+
+  ```java
+  // 사용 준비
+  CriteriaBuilder cb = em.getCriteriaBuilder();
+  CriteriaQuery<Member> query = cb.createQuery(Member.class);
+  
+  // 루트 클래스 (조회 시작할 클래스)
+  Root<Member> m = query.from(Member.class);
+  
+  // 쿼리 생성. where부터 분리해서 조건에 맞는 경우만 where을 넣을 수도 있다.
+  CriteriaQuery<Member> cq = query.select(m).where(cb.equal(m.get("username"), "kim"));
+  List<Member> resultList  = em.createQuery(cq).getResultList();
+  ```
+
+- QueryDSL: 자바 코드로 짜서 JPQL을 빌드해주는 제너레이터. 컴파일 시점에 문법 오류 찾을 수 있음. 동적쿼리 작성 편리하고 단순하고 쉽다.
+
+  ```java
+  JPAQueryFactory query = new JPAQueryFactory(em);
+  QMember m = QMember.member;
+  
+  List<Member. list = query.selectFrom(m)
+      				     .where(m.age.gt(18))
+      				     .orderBy(m.name.desc())
+      					 .fetch();
+  ```
+
+  
+
+- 네이티브 SQL: 표준 SQL문법을 벗어나서 특정 DB에 종속적으로 사용해야 할 때
+
+- JDBC API 직접 사용, MyBatis, SpringJdbcTemplate함께 사용: 영속성 컨텍스트를 적절한 시점에 강제 플러시 필요. createNativeQuery같은건 기본적으로 플러시가 동작. 
+
