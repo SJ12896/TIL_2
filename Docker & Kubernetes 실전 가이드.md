@@ -469,3 +469,54 @@ RUN chown  -R www-data:www-data /var/www/html
   - scheduler: 포드 관찰, 새 포드 생성되어야 하는 워커 노드 선택(다운되었거나 스케일링때문에) => 워커 노드에 알려야하는 것을 api 서버에 알려줌
   - kube-controller-manager: 워커 노드 전체 감시하고 적당한 수의 포드가 가동중인지 확인. => 스케줄러, api서비스와 연동
     - cloud-controller-manager: kube-controller-manager의 특정 버전. 동일한 작업을 수행하지만 클라우드 프로바이더에 따라 다르게 명령을 번역해준다. 
+
+
+
+### 섹션 12: 실전 Kubernetes - 핵심 개념 자세히 알아보기
+
+- kubectl: 새 deployment 생성, 삭제 또는 실행 중 변경같은 명령을 클러스터에 보내는데 사용하는 도구. 마스터 노드에 명령을 보내면 마스터 노드가 워커 노드와 관련된 필요한 작업을 수행한다. 클러스터는 기술적 인프라고 kubectl은 해당 인프라와 통신하고 쿠버네티스 설정과 통신하기 위한 통신장치. api서버, 마스터 노드와 다르다. 
+- 클러스터는 클라우드, 데이터 센터에서 발생하고 kubectl은 로컬 머신에 설치한다.지금은 더미 클러스터를 로컬로 설정하는 가성머신을 위해 minikube라는 도구를 사용한다. 단일 노드 클러스터를 생성하기 때문에 워커와 마스터 노드가 하나의 단일 가상 머신으로 결합된다.(프로덕션이 아닌 개발용)
+- [미니큐브 설치 가이드라인](https://minikube.sigs.k8s.io/docs/start/)에 따라 minikube, kubectl을 설치한다.
+- `minikube status`: 제대로 작동하는지 확인
+- `minikube dashboard`: 클러스터를 볼 수 있는 비주얼 대시보드 실행
+
+
+
+#### 쿠버네티스 객체
+
+- 특정 명령을 실행해 객체를 만들면(명령적 방식 / 선언적 방식) 쿠버네티스가 사용한다. 
+  - 명령적: 개별 명령 직접 실행.
+  - 선언적: docker-compose처럼 구성 파일을 사용하는 방법. yaml파일에 구성 옵션을 기록한다. `apply`명령을 사용해 yaml 파일을 가리킨다. 
+- Pods: 쿠버네티스와 상호작용하는 `가장 작은 유닛`. pod는 하나이상의 컨테이너에서 활용하는 볼륨같은 공유 리소스를 보유한다. 또 pod는 클러스터의 일부이므로 다른 pod나 외부 세계와 통신 가능하다. 기본적으로 pod에 클러스터 내부 ip주소가 있고 변경할수도 있다. 이 주소를 통해 내부 컨테이너 사이에서 localhost로 통신하는 것도 가능하다. aws ecs의 태스크 같은 개념으로 실제로 태스크와 pod는 비슷하다. pod를 생성하라고 쿠버네티스에게 알리면 생성해 클러스터의 워커 노드에 배치한다. 쿠버네티스가 자동으로 생성, 제거, 교체하는 것이다. pod는 쿠버네티스에 의해 교체, 제거되면 리소스(컨테이너에 의해 생성된 데이터 등)가 손실된다. pod역시 컨테이너를 감싼 wrapper로 컨테이너의 핵심 개념을 공유한다. 
+  - 쿠버네티스에게 pod를 생성해야한다고 알리려면 워커노드에서 컨테이너를 실행해 코드나 명령으로 pod를 생성하고 그걸 쿠버네티스에게 전송해 (if you wanna tell kubernetes that it should create a pod, run a container and do that on some work node in the cluster you would tell kubernetes to do that by creating a pod object by code or help of command and sending that object to k8s, => 한글로 봐도 영어로 봐도 좀 이해가 안간다.) 
+- Deployments: 쿠버네티스로 작업하는 주요 객체. deployment 객체를 생성해 내부적으로 컨트롤러 객체를 이용한다. 생성, 관리해야하는 pod수와 컨테이너 수에 대한 지침을 제공하면 한 번에 여러 pod를 생성할 수 있다. pod는 쿠버네티스에 의해 생성, 시작되고 워커 노드에 배치된다. 워커 노드는 충분한 메모리, cpu용량을 가져 수동으로 리모트 머신에 배치할 필요 없다. 또 에러가 발생하면 deployment가 일시중지, 삭제, 롤백이 가능해 이전 작업으로 돌아가 버그를 수정하고 업데이트 된 이미지와 컨테이너로 다시 deployment를 시작할 수 있다. 스케일링으로 pod수 조정도 역시 가능하다. 특정 메트릭에서 수신 트래픽과 cpu 사용률이 존재해 오토 스케일링도 된다. deployment는 하나의 pod를 관리하므로 여러 deployment 생성도 가능하다. 결국 deployment로 deployment를 생성하고, 클러스터에 전송해 쿠버네티스가 수행하게 한다. 
+  - 애플리케이션에서 이미지를 빌드해 쿠버네티스 클러스터로 보내기 위해 kubectl로 deployment를 생성한다. `create deployment {name} --image={dockerhub repository}` 명령이 쿠버네티스 클러스터로 전송되면 클러스터는 가상 머신에서 실행되기 때문에 우리 로컬의 이미지를 지정할 수 없고 이미지 레지스트리를 지정해야 한다. 만들어지면 `get deployments`, `get pods`로 확인할 수 있다. 
+    - pod의 컨테이너가 제대로 생성되지 않아 로그를 확인하기 위해 `kubectl logs deployment/{name}`을 사용했다.
+  - kubectl로 deployment를 생성하면 자동으로 쿠버네티스 클러스터에 있는 마스터 노드, 컨트롤 플레인으로 전송한다. 마스터 노드는 클러스터에 필요한 모든 걸 생성한다. 마스터 노드의 스케줄러는 현재 실행 중인 pod을 분석해 deployment기반으로 생성된 pod에 가장 적합한 node를 찾는다. 그래서 생성된 pod는 워커 노드 중 하나로 보내진다. 이 작업은 모두 쿠버네티스에서 자동으로 수행된다. 워커 노드에서는 kubelet 서비스를 얻어 pod를 관리하고, 컨테이너를 시작하고, 모니터링한다. 
+  - 업데이트: 소스코드를 업데이트하고 새로 푸시할 때 `이미지에 다른 태그가 존재해야만 다운로드 되기 때문에` 버전 번호를 지정한다. 그리고 ` kubectl set image deployment/{name} {image name}={repository name}`을 사용한다. 새로운 태그라 이미지가 다시 다운로드 되고 컨테이너도 다시 시작된다. `kubectl rollout stauts deployment/{name}`을 사용하면 업데이트 상태를 볼 수 있다.
+  - 실패: 존재하지 않는 태그를 사용해 이미지를 업데이트한 후 rollout을 사용해 현재 진행중인 작업을 볼 수 있지만 계속 멈춰있다. 계속 듣는 대화형 세션이므로 빠져나온 뒤 대시보드에서 pods를 확인하면 이전 복제본은 종료되지 않았고 새 pod는 에러가 있는 상태다. 쿠버네티스의 롤링 업데이트 전략덕분에 새 pod가 실행되기 전에 이전 pod를 종료하지 않는다. 이제 업데이트를 롤백해야 한다. `kubectl rollout undo deployment/{name}`을 사용한다. 바로 전이 아닌 더 이전으로 돌아가려면 `kubectl rollout history deployment/{name}`으로 히스토리를 볼 수 있다. 더 자세한 내용을 보려면 `--revision=`을 추가해 히스토리에 있던 리비전 중 하나를 선택한다. 이 중 하나로 되돌아가려면 앞서 사용한 rollout undo 뒤에 `--to-revision=`을 추가한다. 
+- Services: pod와 컨테이너에 접근하려면 필요하다. 클러스터의 다른 pod에나 외부에 pod를 노출한다. 대시보드의 pod에서 ip주소가 존재하지만 외부에서 액세스할 수 없고 교체될 때 변경되는 문제가 있다. 스케일링 등으로 생각보다 자주 이런 문제가 있어 ip주소는 통신에 좋은 도구가 아니다. service는 pod를 그룹화하고 공유 주소와 공유 ip를 제공한다. 이 주소는 변경되지 않는다. 또한 외부에도 노출할 수 있어 접근 가능해진다. 디폴트 내부 값에 service를 사용해 덮어쓰는 것이다. 
+  - kubectl create를 사용해서 생성하는 것도 가능하지만 더 편하게 pod를 노출하기 위해 ` kubectl expose deployment {deployment name} --type=LoadBalancer --port={port}`를 사용한다. expose로 deployment를 노출해 deployment로 생성된 pod를 노출한다. 그리고 컨테이너가 노출하는 port를 지정하고 type으로는 ClusterIP(디폴트, 내부에서만, 변경되지 않음) / NodePort(deployment가 실행 중인 워커 노드의 IP주소) / LoadBalancer(앞보다 좋음, 클러스터가 실행되는 인프라에 존재하는 걸 활용해서 고유 주소를 생성하고 트래픽을 모든 pod에 고르게 분산한다. 클러스터와 이게 실행되는 인프라가 지원해야 쓸 수 있다. aws, minikube는 지원한다.)
+  - 생성 후 `kubectl get services`를 통해 service가 보이는데 내부ip만 보인다. 클라우드 프로바이더에 배포되면 외부 ip가 보이지만 minikube는 로컬 가상 머신이기 때문에 pending으로만 존재한다. 대신 service에 액세스할 수 있는 `minikube service {deployment name}`으로 애플리케이션을 보는데 사용가능한 주소가 보이고 브라우저가 자동으로 열린다. 
+  - 애플리케이션은 우리가 생성해 쿠버네티스 클러스터로 보낸 deployment 기반으로, 생성한 pod에서 실행되는데 우리가 만든 service로 인해 주소를 볼 수 있는 것이다.
+  - 애플리케이션 자체에 error를 발생시키는 코드가 있을 때 해당 조건을 실행 후 다시 원래대로 돌아오면 잘 작동한다. 하지만 kubectl get pods를 보면 RESTART가 1로 변경된 것을 볼 수 있다. 다시 에러를 발생시키면 무한 루프를 방지하기 위해 재시작 시간이 점점 더 길어진다. deployment에서 pod와 컨테이너를 모니터링중이기 때문에 재시작을 할 수 있다. 대시보드의 이벤트 로그를 보면 pod는 재시작할 때 마다 `다른 컨테이너를 생성했다.` 
+  - 오토 스케일링 대신 `kubectl scale deployment/{name} --replicas={number}`를 사용해 많은 트래픽을 대비해 여러번 pod와 컨테이너를 실행할 수 있다. replica는 pod의 인스턴스다. 그리고 pod를 확인하면 3개가 나오고 대시보드에서도 볼 수 있다. 동일한 컨테이너를 실행중이다. 이 경우에 에러를 발생시키고 다시 실행하면 트래픽은 다른 pod로 리디렉션되어있다. 스케일링이 자동이 아니어도 유용한 기능이다.
+- 배포 구성 파일 생성: 선언적 접근방식
+  - 프로젝트에 원하는 이름으로 .yaml파일을 생성한다.
+  - `apiVersion`: 가장 먼저 구성 리소스 종류와 관계없이 지정해야 한다. 쿠버네티스도 계속 개발중이다. 
+  - `kind`: 구성하려는 리소스 종류. Deployment, Service, Job 등
+  - `metadata`: 생성하려는 객체 이름 같은 중요한 데이터. 참조문서에서 보면 쓸 것들 나와있음.
+    - `name`: 걍 이름. 하위니까 들여쓰기해서 쓰기.
+  - `spec`: 구성하려는 리소스의 사양. 이 파일의 핵심.
+    - `replicas`: pod 인스턴스 수. 추가안하면 디폴트가 1. 처음에 pod 실행 안되길 원하면 0
+    - `selector`: 제어할 pod선택. matchLabels는 레이블로 일치시키고 matchExpressions는 표현을 일치시킨다.
+      - `matchLabels`: 하위에 이 deployment에서 관리할 pod추가(밑에 template의 labels에 있는 것들)
+    - `template`: deployment의 일부로 생성해야하는 pod 정의. 항상 pod관련이라 kind 사용x
+      - `metadata`: pod는 deploment와 다른 쿠버네티스 객체라서 객체에 대한 metadata가 필요하다. 
+        - `labels`: 이름을 지정하기 원할 때. 키, 값은 모두 원하는 대로 지정하면 된다. 여러개가 될수도 있다. 
+          - `key`: value
+      - `spec`: pod용 사양. 
+        - `containers`: 컨테이너 지정. 하위에 한 컨테이너 당 하나의 -를 쓰고 적어야한다. 명령적 방법에서는 여러 컨테이너 용으로 쉼표로 추가할 수 있다. 
+          - `- name`: 컨테이너 이름
+          - `image`:  docker hub 레지스트리 계정 이름과 이미지 이름
+  - `kubectl apply -f={파일이름.yaml}`로 실행. -f로 파일을 식별하고 여러 파일 적용하려면 여러 -f를 사용하면 된다.
