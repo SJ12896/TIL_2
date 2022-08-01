@@ -520,3 +520,34 @@ RUN chown  -R www-data:www-data /var/www/html
           - `- name`: 컨테이너 이름
           - `image`:  docker hub 레지스트리 계정 이름과 이미지 이름
   - `kubectl apply -f={파일이름.yaml}`로 실행. -f로 파일을 식별하고 여러 파일 적용하려면 여러 -f를 사용하면 된다.
+- 배포 구성 파일 생성: service.yaml / 마찬가지로 kubectl apply 명령을 사용해 서비스를 생성하고 `minikube service {serviceName}`을 사용해 노출
+  - `apiVersion`: deployment와 다르게 Service v1 core 공식문서에서 그룹이 core로 지정되어 있어 앞을 생략하고 v1만 적어도 된다.
+  - `kind`: Service
+  - `metadata`:
+    - `name`: backend
+  - `spec`: 공식문서에 구성가능한 항목이 여러개 존재한다.
+    - `selector`: 이 리소스에게 제어되거나, 연결되어야 하는 다른 리소스 식별. service가 pod를 노출하기 때문에 service로 deployment를 제어하지 않고 pod로 제어한다. pod는 deployment에 의해 생성되지만 serivce의 selector에서 개별 pod을 선택한다.(?????????) deployment에서와는 약간 다르게 동작한다. deployment가 조금 더 최신이다. service에서는 matchLabels가 없고 레이블만 일치시킬 수 있어 키-값쌍에 직접 지정한다. 그래서 deployment.yaml에서 생성된 pod의 레이블을 복사해 service에 추가한다. `항상 모든 레이블을 선택하지 않아도 된다.` 따라서 앞에서 사용한 app: second-app만 적고 tier: backend는 가지지 않는 다른 deployment가 있을 수 있는데 `동일한 service로 그룹화`할 수 있다. 그래서 app: second-app 레이블 가진 모든 pod는 다른 tier를 가졌어도 service로 제어한다. 이게 `selector의 배경 아이디어`다.  `다른 리소스에 연결되거나, 제어되어야 하는 다른 리소스를 표현할 때 매우 유연한다.` 
+      - app: second-app
+    - `ports`: 하나 이상의 port 노출 가능. 어떤 pod가 노출되어야 하는지, 노출 방식 알려주기. 
+      - `-protocol`: 'TCP' / 일반적으로 항상 사용되는 프로토콜 정의. 디폴트 값 TCP
+      - `port`: 80
+      - `targetPort`: 8080 / 애플리케이션에서 수신 대기중인 포트.
+      - -와 함께 또다른 포트 노출 가능.
+    - `type`: 디폴트ClusterIp(내부 노출된 ip) / NodePort(클러스터 내부에서만 액세스 가능. 기본적으로 실행되는 워커 노드의 ip와 포트에 노출) / LoadBalancer(외부 세계 액세스를 원할 때 일반적으로 사용되는 것.)
+  - 선언적 방식인 배포 구성 파일을 사용하고 만들어진 내용을 변경하려면 yaml에서 수정하고 다시 적용하면 클러스터에서 필요한 변경이 이루어진다. 선언적 접근 방식의 커다란 장점이다. 리소스 삭제는 `kubectl delete {name}`을 사용한다. 또 `kubectl delete -f {fileName}`을 사용하면 파일이 아니라 파일에 의해 생성된 리소스를 삭제한다.
+  - 지금은 deployment와 service가 나뉘어있지만 모든 항목이 포함된 하나의 파일을 만들어도 된다. 새로운 yaml파일을 만들어 service.yaml에 있던 내용을 옮기고 `---`로 구분해 deployment.yaml의 내용을 넣는다. `---`는 새로운 객체가 시작된다는 것을 의미하는 yaml 구문이다.또 순서대로 리소스가 생성되므로 service를 먼저 넣는데 그 후에는 selector가 있어 동적으로 추가된다.  `클러스터는 살아있는 유기체`이기 때문에 생성될 때 한번에 생성되는 게 아니라 생성, 제거되는 부분을 모니터링하며 selector와 일치하는 레이블이 새로 생성되면 추가된다. 
+  - selector 자세히 살펴보기: 리소스에 다른 리소스 연결
+    - deployment에서는 보다 현대적인 구문을 지원해 matchExpressions를 사용할 수 있다. 
+    - `matchExpressions`:
+      - `- {key: , operator: , values: []}` / 값 목록에 여러개를 넣을 수 있고 operator를 사용해 In, NotIn, Exists등을 지정할 수 있다.
+    - 또 deployment, service.yaml의 metadata에 labels를 지정해 레이블별로 객체를 선택해 삭제할 수도 있다. `kubectl delete {resource} -l {labelKey}={labelValue}` resource는 ,를 사용해 여러개 지정할 수 있다.
+  - pod와 컨테이너가 정상인지 확인하기
+    - deployment.yaml의 containers에서 컨테이너 정의 밑에 `livenessProbe`를 추가한다.
+    - `livenessProbe`:
+      - `httpGet`: get 요청이 pod에 의해(or 쿠버네티스에 의해) 실행중인 애플리케이션으로 전송되어야 한다
+        - `path`: /
+        - `port`: 8080
+      - `periodSeconds`: 10 / 작업을 수행해야 하는 빈도
+      - `initialDelaySeconds`: 5 / 처음 상태 확인까지 기다려야 하는 시간(5초 기다렸다가 쿠버네티스에게 알리기)
+    - /error로 이동해 일부로 충돌을 일으켰다가 몇 초 지난후 원래 url로 이동하면 정상작동.
+  - 그 외 구성: 이미지 태그를 latest로 적용해야 다시 가져왔지만 imagePullPolicy: Always를 사용해 latest 태그가 아니어도 수정사항을 다시 push한 후 deployment를 restart하면 반영된다. 
