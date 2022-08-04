@@ -551,3 +551,86 @@ RUN chown  -R www-data:www-data /var/www/html
       - `initialDelaySeconds`: 5 / 처음 상태 확인까지 기다려야 하는 시간(5초 기다렸다가 쿠버네티스에게 알리기)
     - /error로 이동해 일부로 충돌을 일으켰다가 몇 초 지난후 원래 url로 이동하면 정상작동.
   - 그 외 구성: 이미지 태그를 latest로 적용해야 다시 가져왔지만 imagePullPolicy: Always를 사용해 latest 태그가 아니어도 수정사항을 다시 push한 후 deployment를 restart하면 반영된다. 
+
+
+
+### 섹션 13: Kubernetes로 데이터 & 볼륨 관리하기
+
+- State: state는 애플리케이션에서 생성되어 사용되는 데이터로 삭제되면 안된다. 사용자 계정같은 사용자가 생성한 데이터가 있다. 일반적으로 데이터베이스에 저장되지만 파일에도 저장된다. 중간 결과를 위해 메모리, 임시 DB, 파일에 저장된다. 어떤 데이터든 결국 컨테이너를 재시작해도 살아 남아야 한다. 쿠버네티스로 작업할 때 컨테이너를 실행하는 것은 쿠버네티스다. 클러스터, deployment, 쿠버네티스를 오케스트레이션하고 pod를 생성해 컨테이너를 실행한다. 우리가 명령문을 써서 직접 실행하는 게 아니다. 그러므로 docker run에 -v를 사용하는게 아니라 쿠버네티스를 구성할 때 추가해야 한다. 
+- deployment 설정할 때 pod의 컨테이너에 볼륨을 추가해야한다는 지침을 pod template에 추가할 수 있다. 쿠버네티스의 다양한 볼륨은 도커, 여러 노드의 애플리케이션, 다른 클라우드 및 호스팅 프로바이더에서 실행할 수 있다. 로컬 볼륨을 지원하고 클라우드 프로바이더 특정 볼륨도 지원한다. 
+- 볼륨은 컨테이너 외부, pod내부에 있어 pod가 파괴되면 함께 제거된다. 쿠버네티스의 볼륨은 도커보다 강력해 데이터가 저장되는 위치를 완벽히 제어한다. aws, 데이터 센터 등 다양한 호스팅 환경에서 애플리케이션을 실행할 수 있어 유연하다. 
+- `emptyDir`볼륨 : deployment에 관해 정의할 때 spec의 template에서 pod를 정의한다. 그래서 template의 spec에 containers를 정의하고 같은 단계에 `volumes`를 추가한다. volumes하위에는 `- name:`과 볼륨 타입을 지정해야 하므로 `emptyDir: {}`를 추가한다. 이는 디폴트 설정으로 그대로 사용하는 것이다. emptyDir은 pod가 시작될때마다 새로운 빈 디렉토리를 생성한다. 그래서 pod가 살아있는 한 디렉토리를 유지해 컨테이너가 이를 사용할 수 있다. 볼륨을 만들면 컨테이너에 바인딩하기 위해 containers 하위에 `volumeMounts`를 추가한다. 그리고 그 하위에 `- mountPath`, `name`을 넣는다. mountPath는 마운트 될 컨테이너의 내부 경로로 /app/story를 지정했는데 /app은 Dockerfile에서 지정한 작업위치고 그 하위는 docker-compose에서도 지정했던 볼륨 위치다. 다양한 볼륨을 사용하기 때문에 name도 중요하다. 
+  - 그런데 emptyDir은 replicas가 2일 때, pod이 2개의 다른 인스턴스일 때 트래픽이 다른 pod으로 리디렉션되면 데이터가 손실된다. 
+- `hostPath` 볼륨: emptyDir의 문제를 해결하기 위해 다른 드라이버로 Pod당 새 빈 디렉토리를 생성하는 hostPath방식으로 변경한다.호스트 머신, 노드에서 pod를 실행하는 실제 머신 경로를 설정할 수 있어 그 경로 데이터가 각각 pod에 노출되어 여러 pod가 특정 경로 대신 호스트 머신의 동일한 경로에서 하나를 공유할 수 있다. 동일한 pod에서 모든 요청을 처리할 때만 유용하고 하나의 호스트 머신에 특정되기 때문에 `여러 노드 시스템이 가질 수 있는 문제를 해결할수는 없다.`(다른 노드에서 실행되는 동일한 pod복제본은 데이터에 액세스할 수 없다.) emptyDir 자리에 `hostPath`를 추가하고 하위에 `path`와 `type`을 지정한다. 데이터가 저장돼야 하는 호스트 머신 경로(컨테이너 경로 아님)다. 바인드 마운트와 비슷하다. 이미 존재하는 특정 데이터를 공유할 수 있다. type은 이 경로를 처리하는 방법으로 DirectoryOrCreate(존재하지 않으면 생성)을 사용했다. 그 외 Directory등이 있다. 
+- `CSI`볼륨: container storage interface / 매우 유연한 볼륨. 다양한 클라우드 프로바이더 사용 사레에 대해 더 많은 기본 내장 유형을 추가하지 않게 하기 위해 명확하게 정의된 인터페이스를 노출한다.NFS유형과 함께 작동해 기본 내장 유형이 없어도 전세계 모든 스토리지 솔루션을 연결할 수 있다. 자체 데이터 센터도 이론상 가능하다. 
+- DB가 존재하는 컨테이너나 pod교체 후에도 살아남아야하는 파일을 작성하는 컨테이너가 있다면 `pod와 노드에 독립적인 볼륨`이 필요하다. 임시 데이터는 pod가 제거되면 데이터가 손실되어도 괜찮지만 키 데이터같은 장기 데이터는 그렇지 않다. 그래서 쿠버네티스에 `영구 볼륨` 개념이 있다. 이 아이디어는 단순한 독립 저장소 이상으로 핵심 아이디어는 **볼륨이 pod에서 분리된다**는 것이다. 그리고 클러스터 관리자는 이 볼륨이 구성되는 방식에 완전한 권한을 가진다. 한 번만 정의하면 여러 pod에서 사용가능하다. 노드 안에서는 `영구 볼륨 클레임`(**P**ersistent **V**olume **Claim**)이 존재해 pod, 노드가 영구 볼륨에 액세스를 요청할 수 있다. 
+- 현재 minikube를 사용해 한 노드에서만 실험할 수 있기 때문에 hostPath로 영구볼륨을 테스트해본다. 
+
+host-pv.yaml
+
+- deployment.yaml에서 volume을 설정했을 때와 동일하게 hostPath와 하위 path, type을 추가한다. 그리고 spec에는 더 많은 항목이 추가되어야 한다.
+- `capacity`: 용량설정. 현재 1GB
+- `volumeMode`: 저장 유형. FileSystem과 Block이 있다. 지금 가상머신 내부 파일 시스템에 폴더가 있어 파일시스템으로 설정했다. 
+- `accessModes`: 영구 볼륨에 대한 엑세스 방법 설정. 추가할  수 있는 세 가지 모드가 있다. 
+  - ReadWriteOnce: 볼륨이 단일 노드에 의해 읽기/쓰기 볼륨으로 마운트 될 수 있다. 여러 pod에 의해 수행되지만 동일한 노드에 있어야 한다.
+  - ReadOnlyMany: 읽기전용, 여러 노드에 요청할 수 있음(hostPath불가)
+  - ReadWriteMany: 읽기/쓰기, 여러 노드에 요청할 수 있음(hostPath불가)
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: host-pv
+spec:
+  capacity: 
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+#    - ReadOnlyMany
+#    - ReadWriteMany
+  hostPath:
+    path: /data
+    type: DirectoryOrCreate
+```
+
+- 영구 볼륨 정의 후 사용하기 위해 영구 볼륨 클레임이 필요하다. 볼륨을 사용하는 모든 pod에서 사용한다. 
+
+host-pvc.yaml
+
+- 여기서는 `정적 볼륨 프로비저닝`을 사용하지만 영구볼륨의 이름을 제공하지 않는 `동적 볼륨 프로비저닝`이 있다. 특정 크기나 구성을 말해서 볼륨을 선택하는 것이지만 난이도가 높아 여기선X
+- `resources`는 기본적으로 capacity에 대응하며 클레임에 대해 얻고자 하는 리소스를 지정할 수 있다. 
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: host-pvc
+spec:
+  volumeName: host-pv
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests: 
+      storage: 1Gi
+```
+
+- 이제 pod에서 클레임을 사요하도록 deployment.yaml파일로 돌아간다. 이전에 volumes에서 name, path, type을 지정해서 사용했지만 name은 그대로두고 `persistentVolumeClaim:`을 추가하고 하위에 `claimName`을 적어준다. 
+- 스토리지 클래스: 디폴트 스토리지 클래스가 있다. 관리자에게 스토리지 관리 방법과 볼륨 구성 방법을 제어할 수 있게 하는 개념이다. 위의 경우에서 hostPath 스토리지를 프로비저닝해야 하는 정확한 스토리지를 정의한다. host-pv.yaml에서 spec의 volumeMode아래 `storageClassName`을 추가하고 `standard`로 지정한다. claim 파일에서도 accessMode밑에 같은걸 추가한다.
+- 환경변수: 이전처럼 porcess.env를 사용한 뒤 pod의 컨테이너에서, (deployment.yaml의 conainers에서) 하위에 `env`를 사용해 그 아래에 `- name`, `value`를 써서 만든다. 그리고 이미지를 다시 빌드하고 푸시해서 deployment.yaml도 다시 적용하면 된다.
+- container spec에 추가하지 않고 별도 파일이나 리소스에 지정해 다른 pod의 각 컨테이너가 동일한 호나경변수를 사용하려면 새 yaml파일을 추가한다.
+
+environment.yaml
+
+- `data`에서 키-값쌍을 넣을 수 있다. 
+- deployment.yaml에서 value대신 `valueFrom`을 사용하고 그 하위에 `configMapKeyRef`, 하위에 `name`, `key`를 사용한다. name에는 configMap의 metadata에서 지정한 이름, key는 key값인 folder를 넣는다. 
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-store-env
+data:
+  folder: 'story'
+```
+
